@@ -1,0 +1,18 @@
+[package]
+name = "zeroshade"
+version = "0.1.0"
+edition = "2024_07"
+
+[dependencies]
+starknet = ">=2.7.0"
+# OpenZeppelin - descomentar cuando sea necesario
+# openzeppelin = { git = "https://github.com/OpenZeppelin/cairo-contracts.git", tag = "v0.14.0" }
+
+[[target.starknet-contract]]
+sierra = true
+casm = true
+casm-add-pythonic-hints = true
+
+[dev-dependencies]
+snforge_std = { git = "https://github.com/foundry-rs/starknet-foundry.git", tag = "v0.18.0" }
+

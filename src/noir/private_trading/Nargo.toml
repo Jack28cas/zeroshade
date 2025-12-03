@@ -1,0 +1,9 @@
+[package]
+name = "private_trading"
+type = "bin"
+authors = ["zeroshade"]
+
+[dependencies]
+# Poseidon will be added once we verify the correct dependency path
+# For now using simple hash as placeholder
+

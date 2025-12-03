@@ -1,0 +1,4 @@
+# Python dependencies for interacting with Starknet contracts
+starknet-py>=0.19.0
+python-dotenv>=1.0.0
+

@@ -1,0 +1,9 @@
+# Example witness inputs for private_trading circuit
+# This file is used by `nargo execute witness`
+
+balance = 1000000
+trade_amount = 500000
+user_secret = "123456789"
+commitment = "1000000500123456789"  # (balance * 1000000 + trade_amount) * 1000000 + user_secret
+threshold = 100000
+
