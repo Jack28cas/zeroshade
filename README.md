@@ -271,4 +271,3 @@ MIT
 
 ---
 
-**¡Buena suerte en la hackathon! 🚀**
