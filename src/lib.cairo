@@ -1,7 +1,5 @@
 // Main library file for the project
 // This file exports the contracts and modules
 
-pub mod contracts {
-    mod example_contract;
-}
+pub mod contracts;
 

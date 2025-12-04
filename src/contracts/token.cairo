@@ -5,7 +5,7 @@ use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
 // ERC20-like token contract for meme-coins on Ztarknet/Starknet
 
 #[starknet::interface]
-trait IToken<TContractState> {
+pub trait IToken<TContractState> {
     fn name(self: @TContractState) -> felt252;
     fn symbol(self: @TContractState) -> felt252;
     fn decimals(self: @TContractState) -> u8;
@@ -22,7 +22,8 @@ trait IToken<TContractState> {
 
 #[starknet::contract]
 mod Token {
-    use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
+    use starknet::storage::Map;
+    use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess, StorageMapReadAccess, StorageMapWriteAccess};
     use starknet::{ContractAddress, get_caller_address};
 
     #[storage]
@@ -105,7 +106,7 @@ mod Token {
 
         fn transfer(ref self: ContractState, recipient: ContractAddress, amount: u256) -> bool {
             let sender = get_caller_address();
-            _transfer(ref self, sender, recipient, amount);
+            InternalImpl::_transfer(ref self, sender, recipient, amount);
             true
         }
 
@@ -119,7 +120,7 @@ mod Token {
             let current_allowance = self.allowances.read((sender, caller));
             assert(current_allowance >= amount, 'Insufficient allowance');
             self.allowances.write((sender, caller), current_allowance - amount);
-            _transfer(ref self, sender, recipient, amount);
+            InternalImpl::_transfer(ref self, sender, recipient, amount);
             true
         }
 
@@ -161,7 +162,7 @@ mod Token {
     }
 
     fn zero_address() -> ContractAddress {
-        0.into()
+        starknet::contract_address_const::<0>()
     }
 }
 
