@@ -1,25 +1,23 @@
 use starknet::ContractAddress;
 
-// ZumpFun Token Factory
-// Factory contract to create new tokens easily
-
+// Token Factory ZumpFun — siempre 6 decimales
 #[starknet::interface]
 trait ITokenFactory<TContractState> {
     fn create_token(
         ref self: TContractState,
         name: felt252,
         symbol: felt252,
-        decimals: u8,
-        initial_supply: u256,
+        initial_supply: u256,   // siempre *1e6
     ) -> ContractAddress;
+
     fn get_token_count(self: @TContractState) -> u256;
     fn get_token_at(self: @TContractState, index: u256) -> ContractAddress;
 }
 
 #[starknet::contract]
 mod TokenFactory {
+    use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
     use starknet::storage::Map;
-    use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess, StorageMapReadAccess, StorageMapWriteAccess};
     use starknet::{ClassHash, ContractAddress, get_caller_address};
     use core::result::ResultTrait;
 
@@ -56,31 +54,36 @@ mod TokenFactory {
             ref self: ContractState,
             name: felt252,
             symbol: felt252,
-            decimals: u8,
-            initial_supply: u256,
+            initial_supply: u256,   // SIEMPRE en 6 decimales
         ) -> ContractAddress {
             let creator = get_caller_address();
             let class_hash = self.token_class_hash.read();
 
-            // Prepare constructor calldata
-            // Note: ContractAddress needs to be converted to felt252 for calldata
-            // u256 needs to be split into low and high felt252 values
+            // preparamos calldata para constructor del token:
+            // name
+            // symbol
+            // decimals (FIJO = 6)
+            // initial_supply (low/high)
+            // owner
             let creator_felt: felt252 = creator.into();
             let initial_supply_low: felt252 = initial_supply.low.into();
             let initial_supply_high: felt252 = initial_supply.high.into();
+
+            let decimals_fixed: felt252 = 6.into(); // SIEMPRE 6 DECIMALES
+
             let mut constructor_calldata = array![
-                name, symbol, decimals.into(), initial_supply_low, initial_supply_high, creator_felt,
+                name,
+                symbol,
+                decimals_fixed,
+                initial_supply_low,
+                initial_supply_high,
+                creator_felt,
             ];
 
-            // Deploy token contract
-            // TODO: In Cairo 2.0, contract deployment from another contract requires:
-            // Option 1: Use Universal Deployer Contract (UDC) via library call
-            // Option 2: Use OpenZeppelin's deployer library  
-            // Option 3: Use starknet::deploy_contract_syscall if available in your Cairo version
-            // For now, returning zero address as placeholder - this needs proper implementation
+            // DEPLOY TOKEN (luego reemplazás esto por UDC o syscalls reales)
             let token_address = starknet::contract_address_const::<0>();
 
-            // Store token address
+            // store token
             let count = self.token_count.read();
             self.tokens.write(count, token_address);
             self.token_count.write(count + 1);
@@ -99,4 +102,3 @@ mod TokenFactory {
         }
     }
 }
-
