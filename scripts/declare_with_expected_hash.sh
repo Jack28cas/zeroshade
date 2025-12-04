@@ -17,8 +17,8 @@ CONTRACTS_DIR="$PROJECT_ROOT/target/dev"
 echo "📝 Declarando contratos con hash CASM esperado por la red..."
 echo ""
 
-# Hash esperado según el error anterior para Token
-TOKEN_EXPECTED_CASM="0x5081fb5dd71d0dcf6a6e9ff94c8c6573c363daae3cefbeb202d3bf44cf2016a"
+# Hash esperado según el error (actualizado después de cambios en contratos)
+TOKEN_EXPECTED_CASM="0x2ecb9e5e904f6b8cf98e4a6e611a92d27f6d4c2436ef7b4623b67f6d980678c"
 
 # 1. Token
 echo "=== Token ==="
@@ -39,7 +39,7 @@ fi
 # 2. Launchpad (con hash esperado según el error)
 echo "=== Launchpad ==="
 LAUNCHPAD_FILE="$CONTRACTS_DIR/zeroshade_Launchpad.contract_class.json"
-LAUNCHPAD_EXPECTED_CASM="0x630b813c4c69b6d092887a778d61c0ec1b14517d4f353b70580f5e1f408cd5e"
+LAUNCHPAD_EXPECTED_CASM="0x4f0eaf247b13df7144d9a77b748893d72a3658af9dc577613b59494c6446c99"
 if [ -f "$LAUNCHPAD_FILE" ]; then
     echo "Usando hash CASM esperado: $LAUNCHPAD_EXPECTED_CASM"
     echo "Declarando Launchpad..."
@@ -53,15 +53,18 @@ else
     echo "❌ No se encontró Launchpad"
 fi
 
-# 3. TokenFactory (sin hash esperado aún, intentar sin hash primero)
+# 3. TokenFactory (con hash esperado según el error)
 echo "=== TokenFactory ==="
 FACTORY_FILE="$CONTRACTS_DIR/zeroshade_TokenFactory.contract_class.json"
+FACTORY_EXPECTED_CASM="0x409bcc476c704ae07f1e50d520bf854b90e876745821c082130d9620a20c741"
 if [ -f "$FACTORY_FILE" ]; then
-    echo "Declarando TokenFactory (sin hash explícito)..."
+    echo "Usando hash CASM esperado: $FACTORY_EXPECTED_CASM"
+    echo "Declarando TokenFactory..."
     starkli declare "$FACTORY_FILE" \
         --account "$ACCOUNT_EXPANDED" \
         --keystore "$KEYSTORE_EXPANDED" \
-        --rpc "$RPC"
+        --rpc "$RPC" \
+        --casm-hash "$FACTORY_EXPECTED_CASM"
     echo ""
 else
     echo "❌ No se encontró TokenFactory"

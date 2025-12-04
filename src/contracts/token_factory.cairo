@@ -19,7 +19,6 @@ mod TokenFactory {
     use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
     use starknet::storage::Map;
     use starknet::{ClassHash, ContractAddress, get_caller_address};
-    use core::result::ResultTrait;
 
     #[storage]
     struct Storage {
@@ -57,39 +56,20 @@ mod TokenFactory {
             initial_supply: u256,   // SIEMPRE en 6 decimales
         ) -> ContractAddress {
             let creator = get_caller_address();
-            let class_hash = self.token_class_hash.read();
 
-            // preparamos calldata para constructor del token:
-            // name
-            // symbol
-            // decimals (FIJO = 6)
-            // initial_supply (low/high)
-            // owner
-            let creator_felt: felt252 = creator.into();
-            let initial_supply_low: felt252 = initial_supply.low.into();
-            let initial_supply_high: felt252 = initial_supply.high.into();
-
-            let decimals_fixed: felt252 = 6.into(); // SIEMPRE 6 DECIMALES
-
-            let mut constructor_calldata = array![
-                name,
-                symbol,
-                decimals_fixed,
-                initial_supply_low,
-                initial_supply_high,
-                creator_felt,
-            ];
-
-            // DEPLOY TOKEN (luego reemplazás esto por UDC o syscalls reales)
+            // DEPLOY TOKEN (VERSIÓN SIMULADA PARA HACKATHON)
+            // TODO: Implementar despliegue real usando UDC o syscalls
+            // Por ahora, retornamos 0x0 como placeholder
+            // El usuario deberá desplegar el token manualmente usando scripts/deploy_token.sh
+            // y luego ingresar la dirección en el frontend
             let token_address = starknet::contract_address_const::<0>();
-
+            
             // store token
             let count = self.token_count.read();
             self.tokens.write(count, token_address);
             self.token_count.write(count + 1);
-
             self.emit(TokenCreated { token_address, creator, name, symbol });
-
+            
             token_address
         }
 

@@ -1,60 +1,37 @@
 use starknet::ContractAddress;
-use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
-use starknet::{get_block_timestamp, get_caller_address, get_contract_address};
 
-//
-// =============================
-//      INTERFACES
-// =============================
-//
+// ZumpFun Launchpad Contract
+// Manages token launches with bonding curve pricing
 
-// USDC ERC20 Dispatcher
 #[starknet::interface]
-trait IERC20<TContractState> {
-    fn transfer_from(
+trait ILaunchpad<TContractState> {
+    fn launch_token(
         ref self: TContractState,
-        sender: ContractAddress,
-        recipient: ContractAddress,
-        amount: u256,
-    ) -> bool;
-
-    fn transfer(
-        ref self: TContractState,
-        recipient: ContractAddress,
-        amount: u256,
-    ) -> bool;
-
-    fn balance_of(self: @TContractState, owner: ContractAddress) -> u256;
+        token_address: ContractAddress,
+        initial_price: u256,
+        k: u256,
+        n: u256,
+        fee_rate: u256,
+    );
+    fn buy_tokens(
+        ref self: TContractState, token_address: ContractAddress, eth_amount: u256,
+    ) -> u256;
+    fn sell_tokens(
+        ref self: TContractState, token_address: ContractAddress, token_amount: u256,
+    ) -> u256;
+    fn get_price(self: @TContractState, token_address: ContractAddress) -> u256;
+    fn get_launch_info(self: @TContractState, token_address: ContractAddress) -> LaunchInfo;
+    fn get_liquidity(self: @TContractState, token_address: ContractAddress) -> u256;
 }
-
-// Token Dispatcher
-#[starknet::interface]
-trait ITokenDispatcher<TContractState> {
-    fn total_supply(self: @TContractState) -> u256;
-    fn balance_of(self: @TContractState, account: ContractAddress) -> u256;
-    fn transfer_from(
-        ref self: TContractState,
-        sender: ContractAddress,
-        recipient: ContractAddress,
-        amount: u256,
-    ) -> bool;
-    fn mint(ref self: TContractState, to: ContractAddress, amount: u256);
-}
-
-//
-// =============================
-//      DATA STRUCTS
-// =============================
-//
 
 #[derive(Drop, Serde, starknet::Store)]
 struct LaunchInfo {
     token_address: ContractAddress,
     creator: ContractAddress,
-    initial_price: u256,    // escalar 1e6
-    current_price: u256,    // escalar 1e6
-    total_supply: u256,     // tokens * 1e6
-    liquidity: u256,        // USDC * 1e6
+    initial_price: u256,
+    current_price: u256,
+    total_supply: u256,
+    liquidity: u256,
     k: u256,
     n: u256,
     fee_rate: u256,
@@ -62,76 +39,81 @@ struct LaunchInfo {
     is_active: bool,
 }
 
-//
-// =============================
-//          CONTRACT
-// =============================
-//
-
 #[starknet::contract]
 mod Launchpad {
-    use super::{
-        LaunchInfo,
-        ITokenDispatcherDispatcher,
-        IERC20Dispatcher,
-        calculate_price,
-        calculate_tokens_for_usdc,
-        calculate_usdc_for_tokens
-    };
-    use starknet::*;
-
-    const DECIMALS: u256 = 1_000_000; // 6 decimales
+    use starknet::storage::Map;
+    use starknet::storage::{StorageMapReadAccess, StorageMapWriteAccess};
+    use starknet::{ContractAddress, get_block_timestamp, get_caller_address};
+    use super::LaunchInfo;
+    use crate::contracts::token::{ITokenDispatcher, ITokenDispatcherTrait};
 
     #[storage]
     struct Storage {
         launches: Map<ContractAddress, LaunchInfo>,
         launchpad_fee_recipient: ContractAddress,
-        usdc_address: ContractAddress,
-        user_avg_price: Map<(ContractAddress, ContractAddress), u256>, // precio en 6 decimales
+    }
+
+    #[event]
+    #[derive(Drop, starknet::Event)]
+    enum Event {
+        TokenLaunched: TokenLaunched,
+        TokensBought: TokensBought,
+        TokensSold: TokensSold,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct TokenLaunched {
+        token_address: ContractAddress,
+        creator: ContractAddress,
+        initial_price: u256,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct TokensBought {
+        token_address: ContractAddress,
+        buyer: ContractAddress,
+        eth_amount: u256,
+        tokens_received: u256,
+        new_price: u256,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct TokensSold {
+        token_address: ContractAddress,
+        seller: ContractAddress,
+        token_amount: u256,
+        eth_received: u256,
+        new_price: u256,
     }
 
     #[constructor]
-    fn constructor(
-        ref self: ContractState,
-        fee_recipient: ContractAddress,
-        usdc_address: ContractAddress
-    ) {
+    fn constructor(ref self: ContractState, fee_recipient: ContractAddress) {
         self.launchpad_fee_recipient.write(fee_recipient);
-        self.usdc_address.write(usdc_address);
     }
 
-    //
-    // =============================
-    //         PUBLIC METHODS
-    // =============================
-    //
-
     #[abi(embed_v0)]
-    impl LaunchpadImpl for ContractState {
-
-        //
-        // ----- LAUNCH TOKEN -----
-        //
+    impl LaunchpadImpl of super::ILaunchpad<ContractState> {
         fn launch_token(
             ref self: ContractState,
             token_address: ContractAddress,
-            initial_price: u256,   // DEBE venir ya escalado *1e6
+            initial_price: u256,
             k: u256,
             n: u256,
-            fee_rate: u256
+            fee_rate: u256,
         ) {
             let caller = get_caller_address();
-            assert(!self.launches.read(token_address).is_active, 'Already launched');
+            assert(!self.launches.read(token_address).is_active, 'Token already launched');
 
-            let token = ITokenDispatcherDispatcher { contract_address: token_address };
-            let supply = token.total_supply();
+            // Verify token exists and get initial supply
+            let token_dispatcher = ITokenDispatcher { contract_address: token_address };
+            let total_supply: u256 = token_dispatcher.total_supply();
 
-            let launch = LaunchInfo {
+            let launch_info = LaunchInfo {
                 token_address,
                 creator: caller,
                 initial_price,
                 current_price: initial_price,
-                total_supply: supply,
+                total_supply,
                 liquidity: 0,
                 k,
                 n,
@@ -140,170 +122,149 @@ mod Launchpad {
                 is_active: true,
             };
 
-            self.launches.write(token_address, launch);
+            self.launches.write(token_address, launch_info);
+            self.emit(TokenLaunched { token_address, creator: caller, initial_price });
         }
 
-        //
-        // ----- BUY TOKENS WITH USDC -----
-        //
         fn buy_tokens(
-            ref self: ContractState,
-            token_address: ContractAddress,
-            usdc_amount: u256 // en 6 decimales
+            ref self: ContractState, token_address: ContractAddress, eth_amount: u256,
         ) -> u256 {
             let caller = get_caller_address();
-            assert(usdc_amount > 0, 'Invalid amount');
+            assert(eth_amount > 0, 'Amount must be greater than 0');
 
-            let mut info = self.launches.read(token_address);
-            assert(info.is_active, 'Inactive token');
+            let launch_info = self.launches.read(token_address);
+            assert(launch_info.is_active, 'Token not launched or inactive');
 
-            let usdc = IERC20Dispatcher { contract_address: self.usdc_address.read() };
-
-            //
-            // -------- 1% total fee: 0.5% creator + 0.5% protocolo --------
-            //
-            let creator_fee = usdc_amount / 200;   // 0.5%
-            let protocol_fee = usdc_amount / 200;  // 0.5%
-            let net_amount = usdc_amount - creator_fee - protocol_fee;
-
-            // USDC reales moviéndose
-            usdc.transfer_from(caller, info.creator, creator_fee);
-            usdc.transfer_from(caller, self.launchpad_fee_recipient.read(), protocol_fee);
-            usdc.transfer_from(caller, get_contract_address(), net_amount);
-
-            // aumenta liquidez real
-            info.liquidity += net_amount;
-
-            //
-            // -------- bonding curve: calcular tokens recibidos --------
-            //
-            let tokens_out = calculate_tokens_for_usdc(
-                info.current_price,
-                info.total_supply,
-                net_amount,
-                info.k,
-                info.n
+            // Calculate tokens to receive based on bonding curve
+            let tokens_to_receive = InternalImpl::calculate_tokens_for_eth(
+                launch_info.current_price,
+                launch_info.total_supply,
+                eth_amount,
+                launch_info.k,
+                launch_info.n,
             );
 
-            info.total_supply += tokens_out;
+            // Calculate fees
+            let fee = (eth_amount * launch_info.fee_rate) / 10000;
+            let eth_after_fee = eth_amount - fee;
 
-            // actualizar precio
-            info.current_price = calculate_price(
-                info.initial_price,
-                info.total_supply,
-                info.k,
-                info.n
+            // Update launch info
+            let new_price = InternalImpl::calculate_price(
+                launch_info.initial_price,
+                launch_info.total_supply + tokens_to_receive,
+                launch_info.k,
+                launch_info.n,
             );
-
-            self.launches.write(token_address, info);
-
-            // mint real tokens
-            let token = ITokenDispatcherDispatcher { contract_address: token_address };
-            token.mint(caller, tokens_out);
-
-            //
-            // ----- actualizar precio promedio del usuario -----
-            //
-            let prev = self.user_avg_price.read((token_address, caller));
-            let new_avg = if prev == 0 {
-                info.current_price
-            } else {
-                (prev + info.current_price) / 2
+            let new_launch_info = LaunchInfo {
+                token_address: launch_info.token_address,
+                creator: launch_info.creator,
+                initial_price: launch_info.initial_price,
+                current_price: new_price,
+                total_supply: launch_info.total_supply + tokens_to_receive,
+                liquidity: launch_info.liquidity + eth_after_fee,
+                k: launch_info.k,
+                n: launch_info.n,
+                fee_rate: launch_info.fee_rate,
+                launch_time: launch_info.launch_time,
+                is_active: launch_info.is_active,
             };
-            self.user_avg_price.write((token_address, caller), new_avg);
 
-            tokens_out
+            self.launches.write(token_address, new_launch_info);
+
+            // Mint tokens to buyer
+            let mut token_dispatcher = ITokenDispatcher { contract_address: token_address };
+            token_dispatcher.mint(caller, tokens_to_receive);
+
+            self
+                .emit(
+                    TokensBought {
+                        token_address,
+                        buyer: caller,
+                        eth_amount,
+                        tokens_received: tokens_to_receive,
+                        new_price,
+                    },
+                );
+
+            tokens_to_receive
         }
 
-        //
-        // ----- SELL TOKENS -----
-        //
         fn sell_tokens(
-            ref self: ContractState,
-            token_address: ContractAddress,
-            token_amount: u256 // 6 dec
+            ref self: ContractState, token_address: ContractAddress, token_amount: u256,
         ) -> u256 {
             let caller = get_caller_address();
-            assert(token_amount > 0, 'Invalid amount');
+            assert(token_amount > 0, 'Amount must be greater than 0');
 
-            let mut info = self.launches.read(token_address);
-            assert(info.is_active, 'Inactive token');
+            let mut launch_info = self.launches.read(token_address);
+            assert(launch_info.is_active, 'Token not launched or inactive');
 
-            let token = ITokenDispatcherDispatcher { contract_address: token_address };
-            let bal = token.balance_of(caller);
-            assert(bal >= token_amount, 'Insufficient balance');
+            // Verify user has enough tokens
+            let token_dispatcher = ITokenDispatcher { contract_address: token_address };
+            let user_balance: u256 = token_dispatcher.balance_of(caller);
+            assert(user_balance >= token_amount, 'Insufficient token balance');
 
-            let usdc = IERC20Dispatcher { contract_address: self.usdc_address.read() };
-
-            //
-            // ---- valor según curva (USDC) ----
-            //
-            let usdc_value = calculate_usdc_for_tokens(
-                info.current_price,
-                info.total_supply,
+            // Calculate ETH to receive based on bonding curve
+            let eth_to_receive = InternalImpl::calculate_eth_for_tokens(
+                launch_info.current_price,
+                launch_info.total_supply,
                 token_amount,
-                info.k,
-                info.n
+                launch_info.k,
+                launch_info.n,
             );
 
-            let mut payout = usdc_value;
+            // Calculate fees
+            let fee = (eth_to_receive * launch_info.fee_rate) / 10000;
+            let eth_after_fee = eth_to_receive - fee;
 
-            //
-            // ========== Penalidad 1% si precio no subió ==========
-            //
-            let entry = self.user_avg_price.read((token_address, caller));
-            let current = info.current_price;
-
-            if current <= entry {
-                let penalty = usdc_value / 100; // 1%
-                payout -= penalty;
-
-                let creator_cut = penalty / 2;
-                let protocol_cut = penalty / 2;
-
-                usdc.transfer(get_contract_address(), info.creator, creator_cut);
-                usdc.transfer(get_contract_address(), self.launchpad_fee_recipient.read(), protocol_cut);
-            }
-
-            //
-            // ------ actualizar liquidez real ------
-            //
-            info.liquidity -= usdc_value;
-
-            //
-            // ------ supply curva ------
-            //
-            info.total_supply -= token_amount;
-
-            //
-            // ------ actualizar precio ------
-            //
-            info.current_price = calculate_price(
-                info.initial_price,
-                info.total_supply,
-                info.k,
-                info.n
+            // Update launch info
+            let new_price = InternalImpl::calculate_price(
+                launch_info.initial_price,
+                launch_info.total_supply - token_amount,
+                launch_info.k,
+                launch_info.n,
             );
+            let new_launch_info = LaunchInfo {
+                token_address: launch_info.token_address,
+                creator: launch_info.creator,
+                initial_price: launch_info.initial_price,
+                current_price: new_price,
+                total_supply: launch_info.total_supply - token_amount,
+                liquidity: launch_info.liquidity - eth_to_receive,
+                k: launch_info.k,
+                n: launch_info.n,
+                fee_rate: launch_info.fee_rate,
+                launch_time: launch_info.launch_time,
+                is_active: launch_info.is_active,
+            };
 
-            self.launches.write(token_address, info);
+            self.launches.write(token_address, new_launch_info);
 
-            //
-            // ------ burn tokens ------
-            //
-            token.transfer_from(caller, zero_address(), token_amount);
+            // Burn tokens using burn function (solo el Launchpad puede hacer burn)
+            let mut token_dispatcher = ITokenDispatcher { contract_address: token_address };
+            token_dispatcher.burn(caller, token_amount);
 
-            //
-            // ------ pagar USDC real al usuario ------
-            //
-            usdc.transfer(get_contract_address(), caller, payout);
+            self
+                .emit(
+                    TokensSold {
+                        token_address,
+                        seller: caller,
+                        token_amount,
+                        eth_received: eth_after_fee,
+                        new_price,
+                    },
+                );
 
-            payout
+            eth_after_fee
         }
 
         fn get_price(self: @ContractState, token_address: ContractAddress) -> u256 {
-            let info = self.launches.read(token_address);
-            if !info.is_active { return 0; }
-            info.current_price
+            let launch_info = self.launches.read(token_address);
+            if !launch_info.is_active {
+                return 0;
+            }
+            InternalImpl::calculate_price(
+                launch_info.initial_price, launch_info.total_supply, launch_info.k, launch_info.n,
+            )
         }
 
         fn get_launch_info(self: @ContractState, token_address: ContractAddress) -> LaunchInfo {
@@ -311,63 +272,49 @@ mod Launchpad {
         }
 
         fn get_liquidity(self: @ContractState, token_address: ContractAddress) -> u256 {
-            self.launches.read(token_address).liquidity
+            let launch_info = self.launches.read(token_address);
+            launch_info.liquidity
         }
     }
 
-    //
-    // =============================
-    //       INTERNAL MATH
-    // =============================
-    //
+    #[generate_trait]
+    impl InternalImpl of InternalTrait {
+        // Bonding curve formula: price = initial_price * (1 + supply / k)^n
+        fn calculate_price(initial_price: u256, supply: u256, k: u256, n: u256) -> u256 {
+            if supply == 0 {
+                return initial_price;
+            }
+            // Simplified calculation: price = initial_price * (1 + supply / k)
+            // For more precision, we'd need fixed-point math
+            let ratio = (supply * 1000) / k;
+            (initial_price * (1000 + ratio)) / 1000
+        }
 
-    fn calculate_price(initial: u256, supply: u256, k: u256, n: u256) -> u256 {
-        if supply == 0 { return initial; }
-        let ratio = (supply * DECIMALS) / k;
-        (initial * (DECIMALS + ratio)) / DECIMALS
-    }
+        // Calculate tokens received for ETH amount
+        fn calculate_tokens_for_eth(
+            current_price: u256, current_supply: u256, eth_amount: u256, k: u256, n: u256,
+        ) -> u256 {
+            // Simplified: tokens = eth_amount / average_price
+            // Average price between current and next price
+            let next_price = Self::calculate_price(
+                current_price, current_supply + (eth_amount / current_price), k, n,
+            );
+            let avg_price = (current_price + next_price) / 2;
+            eth_amount / avg_price
+        }
 
-    fn calculate_tokens_for_usdc(
-        price: u256,
-        supply: u256,
-        amount: u256,
-        k: u256,
-        n: u256
-    ) -> u256 {
-        let next_price = calculate_price(
-            price,
-            supply + (amount * DECIMALS / price), // escala correcta
-            k,
-            n
-        );
-
-        let avg_price = (price + next_price) / 2;
-
-        // tokens_out = (amount * DECIMALS) / avg_price
-        (amount * DECIMALS) / avg_price
-    }
-
-    fn calculate_usdc_for_tokens(
-        price: u256,
-        supply: u256,
-        tokens: u256,
-        k: u256,
-        n: u256
-    ) -> u256 {
-        let prev_price = calculate_price(
-            price,
-            supply - tokens,
-            k,
-            n
-        );
-
-        let avg_price = (price + prev_price) / 2;
-
-        // usdc = tokens * avg_price / DECIMALS
-        (tokens * avg_price) / DECIMALS
+        // Calculate ETH received for token amount
+        fn calculate_eth_for_tokens(
+            current_price: u256, current_supply: u256, token_amount: u256, k: u256, n: u256,
+        ) -> u256 {
+            // Simplified: eth = tokens * average_price
+            let prev_price = Self::calculate_price(current_price, current_supply - token_amount, k, n);
+            let avg_price = (current_price + prev_price) / 2;
+            token_amount * avg_price
+        }
     }
 
     fn zero_address() -> ContractAddress {
-        0.into()
+        starknet::contract_address_const::<0>()
     }
 }

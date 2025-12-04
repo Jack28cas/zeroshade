@@ -23,24 +23,24 @@ Proyecto para la **Zypherpunk Hackathon: Pista Starknet** - Pump.fun privado sob
 ## 📋 Contratos Desplegados
 
 ### Launchpad Contract ✅
-- **Dirección**: `0x0272e795149307f4b8b03a625a2531788569fb481cc3c407a9e947fd71334d10`
-- **Class Hash**: `0x03abc566a947ed4530e0a25928115d4bceab8e8cc2e81b75e9b9c62061b3ba16`
-- **Transaction**: `0x04d6e8623e3e31db541fa2ba1406c10614aeacde9dba5f9a4f2ec868aecb96b3`
+- **Dirección**: `0x07843bcead611008cd7f15525c5399f9d80adef9e775bf3427435547a1ca7ddf`
+- **Class Hash**: `0x004bd0128004c18f6303fcce444842db253f312ad4a6c84a16c81e6117d12841`
+- **Transaction**: `0x07736e3c83d6d8a8f05334672e4ac163cc4ea8c02a7a830517c5fa727c617312`
 - **Exploradores**:
-  - [Starkscan](https://sepolia.starkscan.co/contract/0x0272e795149307f4b8b03a625a2531788569fb481cc3c407a9e947fd71334d10)
-  - [Voyager](https://sepolia.voyager.online/contract/0x0272e795149307f4b8b03a625a2531788569fb481cc3c407a9e947fd71334d10)
+  - [Starkscan](https://sepolia.starkscan.co/contract/0x07843bcead611008cd7f15525c5399f9d80adef9e775bf3427435547a1ca7ddf)
+  - [Voyager](https://sepolia.voyager.online/contract/0x07843bcead611008cd7f15525c5399f9d80adef9e775bf3427435547a1ca7ddf)
 
 ### TokenFactory Contract ✅
-- **Dirección**: `0x045da214fe154997644790c0d97efadd9781e28dc3c6a3b18bca246bf2914aaa`
-- **Class Hash**: `0x0474219f444d4707453604b268fbaf6184b0a653517de69a344827cac6a92120`
-- **Transaction**: `0x05567043af1b8a0bfcc20c8f65ae0bab51b5d91c3cd5fc28df367f12f7563680`
+- **Dirección**: `0x0755306b285a57fd4568b27bd77afed16c671b8896de6ed76542b5e6ba6b95e5`
+- **Class Hash**: `0x008c7076311e0f842806c474162f13f9086791ec2c80ada96d3359def0f8c5bc`
+- **Transaction**: `0x0599a001a8d7ebbddea5e54f2cd887b5bfb512276a5c4de326b36feafbf63a4b`
 - **Exploradores**:
-  - [Starkscan](https://sepolia.starkscan.co/contract/0x045da214fe154997644790c0d97efadd9781e28dc3c6a3b18bca246bf2914aaa)
-  - [Voyager](https://sepolia.voyager.online/contract/0x045da214fe154997644790c0d97efadd9781e28dc3c6a3b18bca246bf2914aaa)
+  - [Starkscan](https://sepolia.starkscan.co/contract/0x0755306b285a57fd4568b27bd77afed16c671b8896de6ed76542b5e6ba6b95e5)
+  - [Voyager](https://sepolia.voyager.online/contract/0x0755306b285a57fd4568b27bd77afed16c671b8896de6ed76542b5e6ba6b95e5)
 
 ### Token Contract (Declarado, listo para desplegar)
-- **Class Hash**: `0x034a8ef7631c1919ff57a1132ddf1250d5ea562dd71cbbf3a7d0797e01a99a16`
-- **CASM Hash**: `0x5081fb5dd71d0dcf6a6e9ff94c8c6573c363daae3cefbeb202d3bf44cf2016a`
+- **Class Hash**: `0x0000c1da35e0ca183429db3e8fcb0425b9308e6cd50850412ce7aa899ce84960`
+- **CASM Hash**: `0x2ecb9e5e904f6b8cf98e4a6e611a92d27f6d4c2436ef7b4623b67f6d980678c`
 
 ## 🚀 Configuración Inicial
 
@@ -113,22 +113,23 @@ zeroshade/
 ### 1. Crear Token usando TokenFactory
 
 ```bash
-starkli invoke 0x045da214fe154997644790c0d97efadd9781e28dc3c6a3b18bca246bf2914aaa \
+starkli invoke 0x0755306b285a57fd4568b27bd77afed16c671b8896de6ed76542b5e6ba6b95e5 \
     create_token \
     --account "$ACCOUNT" \
     --keystore "$KEYSTORE" \
     --rpc "$RPC" \
     "123456789" \      # name (felt252)
     "987654321" \      # symbol (felt252)
-    "18" \             # decimals (u8)
-    "1000000000000000000000000" \  # initial_supply low (u128)
+    "1000000000000" \  # initial_supply low (u128)
     "0"                # initial_supply high (u128)
 ```
+
+**Nota**: El TokenFactory actualmente tiene un TODO para implementar el despliegue real. En producción necesitaría usar Universal Deployer Contract (UDC).
 
 ### 2. Lanzar Token en Launchpad
 
 ```bash
-starkli invoke 0x0272e795149307f4b8b03a625a2531788569fb481cc3c407a9e947fd71334d10 \
+starkli invoke 0x07843bcead611008cd7f15525c5399f9d80adef9e775bf3427435547a1ca7ddf \
     launch_token \
     --account "$ACCOUNT" \
     --keystore "$KEYSTORE" \
@@ -146,7 +147,7 @@ starkli invoke 0x0272e795149307f4b8b03a625a2531788569fb481cc3c407a9e947fd71334d1
 ### 3. Comprar Tokens
 
 ```bash
-starkli invoke 0x0272e795149307f4b8b03a625a2531788569fb481cc3c407a9e947fd71334d10 \
+starkli invoke 0x07843bcead611008cd7f15525c5399f9d80adef9e775bf3427435547a1ca7ddf \
     buy_tokens \
     --account "$ACCOUNT" \
     --keystore "$KEYSTORE" \
@@ -158,7 +159,7 @@ starkli invoke 0x0272e795149307f4b8b03a625a2531788569fb481cc3c407a9e947fd71334d1
 ### 4. Consultar Precio
 
 ```bash
-starkli call 0x0272e795149307f4b8b03a625a2531788569fb481cc3c407a9e947fd71334d10 \
+starkli call 0x07843bcead611008cd7f15525c5399f9d80adef9e775bf3427435547a1ca7ddf \
     get_price \
     --rpc "$RPC" \
     "<TOKEN_ADDRESS>"

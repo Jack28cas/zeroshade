@@ -1,8 +1,8 @@
 use starknet::ContractAddress;
-use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
 
 #[starknet::interface]
 pub trait IToken<TContractState> {
+    // v2: Added burn and set_launchpad, only launchpad can mint
     fn name(self: @TContractState) -> felt252;
     fn symbol(self: @TContractState) -> felt252;
     fn decimals(self: @TContractState) -> u8;
@@ -15,6 +15,8 @@ pub trait IToken<TContractState> {
     ) -> bool;
     fn approve(ref self: TContractState, spender: ContractAddress, amount: u256) -> bool;
     fn mint(ref self: TContractState, to: ContractAddress, amount: u256);
+    fn burn(ref self: TContractState, from: ContractAddress, amount: u256);
+    fn set_launchpad(ref self: TContractState, launchpad_address: ContractAddress);
 }
 
 #[starknet::contract]
@@ -34,6 +36,8 @@ mod Token {
         balances: Map<ContractAddress, u256>,
         allowances: Map<(ContractAddress, ContractAddress), u256>,
         owner: ContractAddress,
+        launchpad: ContractAddress, // Launchpad address that can mint
+        version: u8, // v2: Added for contract versioning
     }
 
     #[event]
@@ -62,7 +66,7 @@ mod Token {
         ref self: ContractState,
         name: felt252,
         symbol: felt252,
-        initial_supply: u256,   // siempre *1e6
+        initial_supply: u256,   // NO se usa - solo para compatibilidad, no se acuña
         owner: ContractAddress,
     ) {
         self.name.write(name);
@@ -70,10 +74,12 @@ mod Token {
         self.decimals.write(DECIMALS); // HARD-CODED = 6
 
         self.owner.write(owner);
-        self.total_supply.write(initial_supply);
-        self.balances.write(owner, initial_supply);
+        // NO acuñar tokens iniciales - solo el Launchpad puede acuñar cuando se compran
+        self.total_supply.write(0);
+        self.launchpad.write(zero_address()); // Initialize to zero, can be set later
+        self.version.write(2); // v2: Security improvements
 
-        self.emit(Transfer { from: zero_address(), to: owner, value: initial_supply });
+        // NO emitir Transfer porque no hay tokens acuñados
     }
 
     #[abi(embed_v0)]
@@ -133,7 +139,9 @@ mod Token {
 
         fn mint(ref self: ContractState, to: ContractAddress, amount: u256) {
             let caller = get_caller_address();
-            assert(caller == self.owner.read(), 'Only owner can mint');
+            let launchpad = self.launchpad.read();
+            // SOLO el Launchpad puede acuñar - el owner NO puede para prevenir inflación
+            assert(caller == launchpad, 'Only launchpad can mint');
 
             let supply = self.total_supply.read();
             let balance = self.balances.read(to);
@@ -142,6 +150,28 @@ mod Token {
             self.balances.write(to, balance + amount);
 
             self.emit(Transfer { from: zero_address(), to, value: amount });
+        }
+
+        fn burn(ref self: ContractState, from: ContractAddress, amount: u256) {
+            let caller = get_caller_address();
+            let launchpad = self.launchpad.read();
+            // SOLO el Launchpad puede quemar tokens
+            assert(caller == launchpad, 'Only launchpad can burn');
+
+            let supply = self.total_supply.read();
+            let balance = self.balances.read(from);
+            assert(balance >= amount, 'Insufficient balance to burn');
+
+            self.total_supply.write(supply - amount);
+            self.balances.write(from, balance - amount);
+
+            self.emit(Transfer { from, to: zero_address(), value: amount });
+        }
+
+        fn set_launchpad(ref self: ContractState, launchpad_address: ContractAddress) {
+            let caller = get_caller_address();
+            assert(caller == self.owner.read(), 'Only owner can set launchpad');
+            self.launchpad.write(launchpad_address);
         }
     }
 

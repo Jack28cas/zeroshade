@@ -11,8 +11,8 @@ RPC="${RPC:-https://starknet-sepolia-rpc.publicnode.com}"
 ACCOUNT_EXPANDED=$(eval echo "$ACCOUNT")
 KEYSTORE_EXPANDED=$(eval echo "$KEYSTORE")
 
-# Class hash del Launchpad (ya declarado)
-LAUNCHPAD_CLASS_HASH="0x03abc566a947ed4530e0a25928115d4bceab8e8cc2e81b75e9b9c62061b3ba16"
+# Class hash del Launchpad (ya declarado - nuevo después de cambios)
+LAUNCHPAD_CLASS_HASH="0x004bd0128004c18f6303fcce444842db253f312ad4a6c84a16c81e6117d12841"
 
 echo "🚀 Desplegando Launchpad Contract..."
 echo ""
