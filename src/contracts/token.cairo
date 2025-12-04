@@ -1,9 +1,6 @@
 use starknet::ContractAddress;
 use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
 
-// ZumpFun Token Contract
-// ERC20-like token contract for meme-coins on Ztarknet/Starknet
-
 #[starknet::interface]
 pub trait IToken<TContractState> {
     fn name(self: @TContractState) -> felt252;
@@ -25,6 +22,8 @@ mod Token {
     use starknet::storage::Map;
     use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess, StorageMapReadAccess, StorageMapWriteAccess};
     use starknet::{ContractAddress, get_caller_address};
+
+    const DECIMALS: u8 = 6;
 
     #[storage]
     struct Storage {
@@ -63,16 +62,17 @@ mod Token {
         ref self: ContractState,
         name: felt252,
         symbol: felt252,
-        decimals: u8,
-        initial_supply: u256,
+        initial_supply: u256,   // siempre *1e6
         owner: ContractAddress,
     ) {
         self.name.write(name);
         self.symbol.write(symbol);
-        self.decimals.write(decimals);
+        self.decimals.write(DECIMALS); // HARD-CODED = 6
+
         self.owner.write(owner);
         self.total_supply.write(initial_supply);
         self.balances.write(owner, initial_supply);
+
         self.emit(Transfer { from: zero_address(), to: owner, value: initial_supply });
     }
 
@@ -87,7 +87,7 @@ mod Token {
         }
 
         fn decimals(self: @ContractState) -> u8 {
-            self.decimals.read()
+            self.decimals.read() // siempre será 6
         }
 
         fn total_supply(self: @ContractState) -> u256 {
@@ -134,10 +134,13 @@ mod Token {
         fn mint(ref self: ContractState, to: ContractAddress, amount: u256) {
             let caller = get_caller_address();
             assert(caller == self.owner.read(), 'Only owner can mint');
-            let current_supply = self.total_supply.read();
-            let current_balance = self.balances.read(to);
-            self.total_supply.write(current_supply + amount);
-            self.balances.write(to, current_balance + amount);
+
+            let supply = self.total_supply.read();
+            let balance = self.balances.read(to);
+
+            self.total_supply.write(supply + amount);
+            self.balances.write(to, balance + amount);
+
             self.emit(Transfer { from: zero_address(), to, value: amount });
         }
     }
@@ -152,11 +155,15 @@ mod Token {
         ) {
             assert(sender != zero_address(), 'Transfer from zero address');
             assert(recipient != zero_address(), 'Transfer to zero address');
-            let sender_balance = self.balances.read(sender);
-            assert(sender_balance >= amount, 'Insufficient balance');
-            self.balances.write(sender, sender_balance - amount);
-            let recipient_balance = self.balances.read(recipient);
-            self.balances.write(recipient, recipient_balance + amount);
+
+            let bal = self.balances.read(sender);
+            assert(bal >= amount, 'Insufficient balance');
+
+            self.balances.write(sender, bal - amount);
+
+            let rec_bal = self.balances.read(recipient);
+            self.balances.write(recipient, rec_bal + amount);
+
             self.emit(Transfer { from: sender, to: recipient, value: amount });
         }
     }
@@ -165,4 +172,3 @@ mod Token {
         starknet::contract_address_const::<0>()
     }
 }
-
