@@ -3,6 +3,16 @@ use starknet::ContractAddress;
 // ZumpFun Launchpad Contract
 // Manages token launches with bonding curve pricing
 
+// Interface for PausableERC20 (payment token)
+#[starknet::interface]
+trait IPaymentToken<TContractState> {
+    fn transfer(ref self: TContractState, recipient: ContractAddress, amount: u256) -> bool;
+    fn transfer_from(
+        ref self: TContractState, sender: ContractAddress, recipient: ContractAddress, amount: u256,
+    ) -> bool;
+    fn balance_of(self: @TContractState, account: ContractAddress) -> u256;
+}
+
 #[starknet::interface]
 trait ILaunchpad<TContractState> {
     fn launch_token(
@@ -14,7 +24,7 @@ trait ILaunchpad<TContractState> {
         fee_rate: u256,
     );
     fn buy_tokens(
-        ref self: TContractState, token_address: ContractAddress, eth_amount: u256,
+        ref self: TContractState, token_address: ContractAddress, payment_amount: u256,
     ) -> u256;
     fn sell_tokens(
         ref self: TContractState, token_address: ContractAddress, token_amount: u256,
@@ -40,17 +50,19 @@ struct LaunchInfo {
 }
 
 #[starknet::contract]
+#[feature("deprecated-starknet-consts")]
 mod Launchpad {
     use starknet::storage::Map;
-    use starknet::storage::{StorageMapReadAccess, StorageMapWriteAccess};
-    use starknet::{ContractAddress, get_block_timestamp, get_caller_address};
-    use super::LaunchInfo;
+    use starknet::storage::{StorageMapReadAccess, StorageMapWriteAccess, StoragePointerReadAccess, StoragePointerWriteAccess};
+    use starknet::{ContractAddress, get_block_timestamp, get_caller_address, get_contract_address};
+    use super::{LaunchInfo, IPaymentTokenDispatcher, IPaymentTokenDispatcherTrait};
     use crate::contracts::token::{ITokenDispatcher, ITokenDispatcherTrait};
 
     #[storage]
     struct Storage {
         launches: Map<ContractAddress, LaunchInfo>,
         launchpad_fee_recipient: ContractAddress,
+        payment_token: ContractAddress, // PausableERC20 address
     }
 
     #[event]
@@ -87,8 +99,13 @@ mod Launchpad {
     }
 
     #[constructor]
-    fn constructor(ref self: ContractState, fee_recipient: ContractAddress) {
+    fn constructor(
+        ref self: ContractState, 
+        fee_recipient: ContractAddress,
+        payment_token: ContractAddress, // PausableERC20 address
+    ) {
         self.launchpad_fee_recipient.write(fee_recipient);
+        self.payment_token.write(payment_token);
     }
 
     #[abi(embed_v0)]
@@ -127,26 +144,31 @@ mod Launchpad {
         }
 
         fn buy_tokens(
-            ref self: ContractState, token_address: ContractAddress, eth_amount: u256,
+            ref self: ContractState, token_address: ContractAddress, payment_amount: u256,
         ) -> u256 {
             let caller = get_caller_address();
-            assert(eth_amount > 0, 'Amount must be greater than 0');
+            assert(payment_amount > 0, 'Amount must be greater than 0');
 
             let launch_info = self.launches.read(token_address);
             assert(launch_info.is_active, 'Token not launched or inactive');
 
+            // Transfer payment tokens from caller to Launchpad
+            let payment_token_address = self.payment_token.read();
+            let mut payment_dispatcher = IPaymentTokenDispatcher { contract_address: payment_token_address };
+            payment_dispatcher.transfer_from(caller, get_contract_address(), payment_amount);
+
             // Calculate tokens to receive based on bonding curve
-            let tokens_to_receive = InternalImpl::calculate_tokens_for_eth(
+            let tokens_to_receive = InternalImpl::calculate_tokens_for_payment(
                 launch_info.current_price,
                 launch_info.total_supply,
-                eth_amount,
+                payment_amount,
                 launch_info.k,
                 launch_info.n,
             );
 
             // Calculate fees
-            let fee = (eth_amount * launch_info.fee_rate) / 10000;
-            let eth_after_fee = eth_amount - fee;
+            let fee = (payment_amount * launch_info.fee_rate) / 10000;
+            let payment_after_fee = payment_amount - fee;
 
             // Update launch info
             let new_price = InternalImpl::calculate_price(
@@ -161,7 +183,7 @@ mod Launchpad {
                 initial_price: launch_info.initial_price,
                 current_price: new_price,
                 total_supply: launch_info.total_supply + tokens_to_receive,
-                liquidity: launch_info.liquidity + eth_after_fee,
+                liquidity: launch_info.liquidity + payment_after_fee,
                 k: launch_info.k,
                 n: launch_info.n,
                 fee_rate: launch_info.fee_rate,
@@ -180,7 +202,7 @@ mod Launchpad {
                     TokensBought {
                         token_address,
                         buyer: caller,
-                        eth_amount,
+                        eth_amount: payment_amount,
                         tokens_received: tokens_to_receive,
                         new_price,
                     },
@@ -203,8 +225,8 @@ mod Launchpad {
             let user_balance: u256 = token_dispatcher.balance_of(caller);
             assert(user_balance >= token_amount, 'Insufficient token balance');
 
-            // Calculate ETH to receive based on bonding curve
-            let eth_to_receive = InternalImpl::calculate_eth_for_tokens(
+            // Calculate payment tokens to receive based on bonding curve
+            let payment_to_receive = InternalImpl::calculate_payment_for_tokens(
                 launch_info.current_price,
                 launch_info.total_supply,
                 token_amount,
@@ -213,8 +235,8 @@ mod Launchpad {
             );
 
             // Calculate fees
-            let fee = (eth_to_receive * launch_info.fee_rate) / 10000;
-            let eth_after_fee = eth_to_receive - fee;
+            let fee = (payment_to_receive * launch_info.fee_rate) / 10000;
+            let payment_after_fee = payment_to_receive - fee;
 
             // Update launch info
             let new_price = InternalImpl::calculate_price(
@@ -229,7 +251,7 @@ mod Launchpad {
                 initial_price: launch_info.initial_price,
                 current_price: new_price,
                 total_supply: launch_info.total_supply - token_amount,
-                liquidity: launch_info.liquidity - eth_to_receive,
+                liquidity: launch_info.liquidity - payment_to_receive,
                 k: launch_info.k,
                 n: launch_info.n,
                 fee_rate: launch_info.fee_rate,
@@ -243,18 +265,23 @@ mod Launchpad {
             let mut token_dispatcher = ITokenDispatcher { contract_address: token_address };
             token_dispatcher.burn(caller, token_amount);
 
+            // Transfer payment tokens to seller
+            let payment_token_address = self.payment_token.read();
+            let mut payment_dispatcher = IPaymentTokenDispatcher { contract_address: payment_token_address };
+            payment_dispatcher.transfer(caller, payment_after_fee);
+
             self
                 .emit(
                     TokensSold {
                         token_address,
                         seller: caller,
                         token_amount,
-                        eth_received: eth_after_fee,
+                        eth_received: payment_after_fee,
                         new_price,
                     },
                 );
 
-            eth_after_fee
+            payment_after_fee
         }
 
         fn get_price(self: @ContractState, token_address: ContractAddress) -> u256 {
@@ -290,24 +317,24 @@ mod Launchpad {
             (initial_price * (1000 + ratio)) / 1000
         }
 
-        // Calculate tokens received for ETH amount
-        fn calculate_tokens_for_eth(
-            current_price: u256, current_supply: u256, eth_amount: u256, k: u256, n: u256,
+        // Calculate tokens received for payment amount
+        fn calculate_tokens_for_payment(
+            current_price: u256, current_supply: u256, payment_amount: u256, k: u256, n: u256,
         ) -> u256 {
-            // Simplified: tokens = eth_amount / average_price
+            // Simplified: tokens = payment_amount / average_price
             // Average price between current and next price
             let next_price = Self::calculate_price(
-                current_price, current_supply + (eth_amount / current_price), k, n,
+                current_price, current_supply + (payment_amount / current_price), k, n,
             );
             let avg_price = (current_price + next_price) / 2;
-            eth_amount / avg_price
+            payment_amount / avg_price
         }
 
-        // Calculate ETH received for token amount
-        fn calculate_eth_for_tokens(
+        // Calculate payment tokens received for token amount
+        fn calculate_payment_for_tokens(
             current_price: u256, current_supply: u256, token_amount: u256, k: u256, n: u256,
         ) -> u256 {
-            // Simplified: eth = tokens * average_price
+            // Simplified: payment = tokens * average_price
             let prev_price = Self::calculate_price(current_price, current_supply - token_amount, k, n);
             let avg_price = (current_price + prev_price) / 2;
             token_amount * avg_price

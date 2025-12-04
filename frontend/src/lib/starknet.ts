@@ -50,7 +50,7 @@ export const LAUNCHPAD_ABI = [
     name: 'buy_tokens',
     inputs: [
       { name: 'token_address', type: 'ContractAddress' },
-      { name: 'eth_amount', type: 'u256' },
+      { name: 'payment_amount', type: 'u256' }, // Cambiado de eth_amount a payment_amount
     ],
     outputs: [{ name: 'tokens_received', type: 'u256' }],
     state_mutability: 'external',
@@ -152,6 +152,13 @@ export function getLaunchpadContract(account: AccountInterface): Contract {
 
 export function getTokenContract(tokenAddress: string, account: AccountInterface): Contract {
   return new Contract(TOKEN_ABI, tokenAddress, account)
+}
+
+// PausableERC20 ABI (mismo que TOKEN_ABI, es un ERC20 estándar)
+export const PAUSABLE_ERC20_ABI = TOKEN_ABI
+
+export function getPausableERC20Contract(account: AccountInterface): Contract {
+  return new Contract(PAUSABLE_ERC20_ABI, CONTRACTS.PAUSABLE_ERC20, account)
 }
 
 // Convert string to felt252 (simple hash)

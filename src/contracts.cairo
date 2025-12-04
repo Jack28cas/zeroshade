@@ -3,4 +3,5 @@ pub mod example_contract;
 pub mod launchpad;
 pub mod token;
 pub mod token_factory;
+pub mod PausableERC20;
 

@@ -1,274 +1,359 @@
-# ZeroShade - ZumpFun (Zypherpunk Hackathon)
+# ZeroShade
 
-Proyecto para la **Zypherpunk Hackathon: Pista Starknet** - Pump.fun privado sobre Ztarknet usando Noir, Garaga y Starknet.
+A decentralized token launchpad platform on Starknet, inspired by Pump.fun, featuring bonding curve mechanics and a seamless token creation experience.
 
-## 🎯 Objetivo del Proyecto
+## Overview
 
-**ZumpFun** es una plataforma de lanzamiento de tokens tipo Pump.fun con privacidad, permitiendo:
-- Creación y lanzamiento de tokens meme
-- Trading con bonding curve
-- Privacidad mediante Zero-Knowledge Proofs (Noir + Garaga)
-- Identidad del creador oculta
+ZeroShade enables users to create, launch, and trade meme tokens on Starknet with an automated bonding curve pricing mechanism. The platform uses a custom payment token (PausableERC20) for all transactions, providing a unified trading experience.
 
-## ✅ Estado Actual
+## Features
 
-- ✅ **Contratos compilados** (Token, Launchpad, TokenFactory)
-- ✅ **Contratos declarados** en Starknet Sepolia
-- ✅ **Contratos desplegados** (Launchpad, TokenFactory)
-- ✅ **Circuito Noir** para trading privado
-- ✅ **Scripts de deployment e interacción**
-- ⏳ Backend API (próximo)
-- ⏳ Frontend UI (próximo)
+- **Token Creation**: Deploy custom ERC20-like tokens with 6 decimals
+- **Bonding Curve Trading**: Automated price discovery through mathematical curves
+- **Payment Token Integration**: Unified payment system using PausableERC20
+- **Token Factory**: Simplified token deployment workflow
+- **Launchpad Management**: Centralized platform for token launches
+- **Real-time Monitoring**: Backend service tracks all deployed tokens
+- **Web Interface**: Next.js frontend for seamless user interaction
 
-## 📋 Contratos Desplegados
+## Architecture
 
-### Launchpad Contract ✅
-- **Dirección**: `0x07843bcead611008cd7f15525c5399f9d80adef9e775bf3427435547a1ca7ddf`
-- **Class Hash**: `0x004bd0128004c18f6303fcce444842db253f312ad4a6c84a16c81e6117d12841`
-- **Transaction**: `0x07736e3c83d6d8a8f05334672e4ac163cc4ea8c02a7a830517c5fa727c617312`
-- **Exploradores**:
-  - [Starkscan](https://sepolia.starkscan.co/contract/0x07843bcead611008cd7f15525c5399f9d80adef9e775bf3427435547a1ca7ddf)
-  - [Voyager](https://sepolia.voyager.online/contract/0x07843bcead611008cd7f15525c5399f9d80adef9e775bf3427435547a1ca7ddf)
+### Smart Contracts
 
-### TokenFactory Contract ✅
-- **Dirección**: `0x0755306b285a57fd4568b27bd77afed16c671b8896de6ed76542b5e6ba6b95e5`
-- **Class Hash**: `0x008c7076311e0f842806c474162f13f9086791ec2c80ada96d3359def0f8c5bc`
-- **Transaction**: `0x0599a001a8d7ebbddea5e54f2cd887b5bfb512276a5c4de326b36feafbf63a4b`
-- **Exploradores**:
-  - [Starkscan](https://sepolia.starkscan.co/contract/0x0755306b285a57fd4568b27bd77afed16c671b8896de6ed76542b5e6ba6b95e5)
-  - [Voyager](https://sepolia.voyager.online/contract/0x0755306b285a57fd4568b27bd77afed16c671b8896de6ed76542b5e6ba6b95e5)
+The platform consists of four main contracts:
 
-### Token Contract (Declarado, listo para desplegar)
+1. **TokenFactory** - Creates and manages token deployments
+2. **Token** - ERC20-like token contract with mint/burn capabilities
+3. **Launchpad** - Manages token launches and bonding curve mechanics
+4. **PausableERC20** - Payment token used for buying/selling memecoins
+
+### Security Model
+
+- **Mint/Burn Restrictions**: Only the Launchpad contract can mint or burn tokens
+- **Owner Protection**: Token owners cannot mint tokens to prevent inflation
+- **Zero Initial Supply**: Tokens start with zero supply and are minted on-demand
+- **Launchpad Configuration**: Tokens must be explicitly linked to the Launchpad
+
+## Deployed Contracts (Starknet Sepolia)
+
+### TokenFactory
+- **Address**: `0x07ee147bfd2037bcbfe96196689a3ba52e47271a7c5517880ed0f6c88d218c98`
+- **Purpose**: Token creation and deployment management
+- **Status**: Active
+
+### Launchpad
+- **Address**: `0x04ea108d263eac17f70af11fef789816d39b2fdf96d051da10c1d27c0f50e67b`
+- **Purpose**: Token launches, bonding curve pricing, buy/sell operations
+- **Payment Token**: Uses PausableERC20 for all transactions
+- **Status**: Active
+
+### PausableERC20
+- **Address**: `0x03f07d3175ee42202dd88d409b15557625891be4d051ed797d663d63b55f2778`
+- **Purpose**: Payment token for purchasing memecoins
+- **Decimals**: 6
+- **Status**: Active
+
+### Token (Class Hash)
 - **Class Hash**: `0x0000c1da35e0ca183429db3e8fcb0425b9308e6cd50850412ce7aa899ce84960`
-- **CASM Hash**: `0x2ecb9e5e904f6b8cf98e4a6e611a92d27f6d4c2436ef7b4623b67f6d980678c`
+- **Purpose**: Template for individual token deployments
+- **Status**: Declared, ready for deployment
 
-## 🚀 Configuración Inicial
+## Getting Started
 
-### Prerrequisitos
+### Prerequisites
 
-1. **Scarb** (Cairo build tool):
-   ```bash
-   # Windows (con Scoop)
-   scoop install scarb
-   
-   # O descarga desde: https://docs.swmansion.com/scarb/
-   scarb --version  # Verificar: 2.9.2 o compatible
-   ```
+- **Scarb** 2.9.2+ (Cairo build tool)
+- **Starkli** (Starknet CLI)
+- **Node.js** 18+ (for frontend/backend)
+- **Git**
 
-2. **Starkli** (CLI para Starknet):
-   ```bash
-   # Instalar desde: https://book.starkli.rs/
-   ```
-
-3. **Noir + Garaga** (para privacidad):
-   - Ver sección [Setup Noir/Garaga](#-setup-noir--garaga) más abajo
-
-### Instalación
+### Installation
 
 ```bash
-# Clonar repositorio
-git clone <tu-repo>
+# Clone the repository
+git clone https://github.com/Jack28cas/zeroshade.git
 cd zeroshade
 
-# Compilar contratos
+# Compile contracts
 scarb build
 
-# Formatear código
-scarb fmt
+# Install frontend dependencies
+cd frontend
+npm install
 
-# Configurar variables de entorno
+# Install backend dependencies
+cd ../backend
+npm install
+```
+
+### Configuration
+
+Set up your Starknet account and environment variables:
+
+```bash
+# Configure Starkli account (if not already done)
+starkli account fetch <YOUR_ACCOUNT> --rpc https://starknet-sepolia-rpc.publicnode.com
+
+# Set environment variables
 export RPC="https://starknet-sepolia-rpc.publicnode.com"
 export ACCOUNT="~/.starkli/accounts/sepolia/my.json"
 export KEYSTORE="~/.starkli/keystores/my_keystore.json"
 ```
 
-## 📁 Estructura del Proyecto
+## Project Structure
 
 ```
 zeroshade/
 ├── src/
-│   ├── lib.cairo
 │   ├── contracts/
-│   │   ├── token.cairo         # Token ERC20-like
-│   │   ├── launchpad.cairo     # Launchpad con bonding curve
-│   │   └── token_factory.cairo # Factory para crear tokens
-│   └── noir/
-│       └── private_trading/    # Circuito Noir para privacidad
-├── tests/
-│   ├── token_test.cairo
-│   └── launchpad_test.cairo
+│   │   ├── token.cairo              # Token contract (ERC20-like)
+│   │   ├── token_factory.cairo       # Token factory
+│   │   ├── launchpad.cairo           # Launchpad with bonding curve
+│   │   └── PausableERC20.cairo       # Payment token
+│   └── lib.cairo
 ├── scripts/
-│   ├── declare_with_expected_hash.sh  # Declarar contratos
-│   ├── deploy_launchpad.sh            # Desplegar Launchpad
-│   ├── deploy_token_factory.sh        # Desplegar Factory
-│   ├── deploy_token.sh                 # Desplegar Token
-│   ├── generate_proof.sh              # Generar pruebas ZK
-│   └── setup_wsl.sh                   # Setup WSL
-├── Scarb.toml
-└── README.md
+│   ├── declare_*.sh                  # Contract declaration scripts
+│   ├── deploy_*.sh                   # Deployment scripts
+│   ├── mint_pausable_erc20.sh        # Mint payment tokens
+│   └── set_launchpad.sh              # Configure token launchpad
+├── frontend/                         # Next.js frontend
+│   ├── src/
+│   │   ├── components/               # React components
+│   │   ├── lib/                      # Utilities and constants
+│   │   └── contexts/                 # React contexts
+│   └── package.json
+├── backend/                          # Node.js/Express backend
+│   ├── src/
+│   │   ├── routes/                   # API routes
+│   │   ├── services/                 # Business logic
+│   │   └── config/                   # Configuration
+│   └── package.json
+└── Scarb.toml                        # Cairo project config
 ```
 
-## 🔧 Uso de Contratos
+## Usage
 
-### 1. Crear Token usando TokenFactory
+### Creating a Token
 
-```bash
-starkli invoke 0x0755306b285a57fd4568b27bd77afed16c671b8896de6ed76542b5e6ba6b95e5 \
-    create_token \
-    --account "$ACCOUNT" \
-    --keystore "$KEYSTORE" \
-    --rpc "$RPC" \
-    "123456789" \      # name (felt252)
-    "987654321" \      # symbol (felt252)
-    "1000000000000" \  # initial_supply low (u128)
-    "0"                # initial_supply high (u128)
-```
-
-**Nota**: El TokenFactory actualmente tiene un TODO para implementar el despliegue real. En producción necesitaría usar Universal Deployer Contract (UDC).
-
-### 2. Lanzar Token en Launchpad
-
-```bash
-starkli invoke 0x07843bcead611008cd7f15525c5399f9d80adef9e775bf3427435547a1ca7ddf \
-    launch_token \
-    --account "$ACCOUNT" \
-    --keystore "$KEYSTORE" \
-    --rpc "$RPC" \
-    "<TOKEN_ADDRESS>" \    # Dirección del token
-    "1000000000000000" \   # initial_price (u256 low)
-    "0" \                  # initial_price (u256 high)
-    "1000000" \            # k (u256 low)
-    "0" \                  # k (u256 high)
-    "1" \                  # n (u256 low)
-    "0" \                  # n (u256 high)
-    "100"                  # fee_rate (u256, basis points: 100 = 1%)
-```
-
-### 3. Comprar Tokens
-
-```bash
-starkli invoke 0x07843bcead611008cd7f15525c5399f9d80adef9e775bf3427435547a1ca7ddf \
-    buy_tokens \
-    --account "$ACCOUNT" \
-    --keystore "$KEYSTORE" \
-    --rpc "$RPC" \
-    "<TOKEN_ADDRESS>" \
-    "100000000000000000"   # eth_amount (u256 low, ej: 0.1 ETH)
-```
-
-### 4. Consultar Precio
-
-```bash
-starkli call 0x07843bcead611008cd7f15525c5399f9d80adef9e775bf3427435547a1ca7ddf \
-    get_price \
-    --rpc "$RPC" \
-    "<TOKEN_ADDRESS>"
-```
-
-## 🔐 Setup Noir + Garaga
-
-### Versiones Requeridas
-- **Noir**: 1.0.0-beta.1
-- **Barretenberg (bb)**: 0.67.0
-- **Garaga**: 0.15.5
-- **Scarb**: 2.9.2
-
-### ⚠️ Problemas Conocidos
-
-1. **Barretenberg NO funciona bien en macOS**
-   - Crashes aleatorios, errores de símbolos
-   - **Solución**: Usar GitHub Codespaces o WSL/Linux
-
-2. **Garaga calldata es GRANDE**
-   - Circuitos pequeños generan ~79KB de calldata
-   - Considerar gas costs
-
-### Setup en WSL (Recomendado para Windows)
-
-```bash
-# Ejecutar script de setup
-bash scripts/setup_wsl.sh
-```
-
-El script instala:
-- Barretenberg 0.67.0
-- Noir 1.0.0-beta.1
-- Garaga 0.15.5
-
-### Flujo de Trabajo con Noir + Garaga
-
-1. **Crear/Compilar Circuito Noir**:
+1. **Deploy Token Contract**:
    ```bash
-   cd src/noir/private_trading
-   nargo compile
+   ./scripts/deploy_token.sh
+   # Follow prompts for name, symbol, and initial supply
    ```
 
-2. **Generar Proof**:
+2. **Set Launchpad** (required for minting):
    ```bash
-   # Desde la raíz del proyecto
-   ./scripts/generate_proof.sh private_trading
+   ./scripts/set_launchpad.sh
+   # Enter token address and launchpad address
    ```
 
-3. **Generar Verifier Contract con Garaga**:
+3. **Launch Token on Launchpad**:
    ```bash
-   # El script generate_proof.sh genera automáticamente el verifier
-   # En: src/noir/private_trading/zeroshade/
+   starkli invoke 0x04ea108d263eac17f70af11fef789816d39b2fdf96d051da10c1d27c0f50e67b \
+     launch_token \
+     --account "$ACCOUNT" \
+     --keystore "$KEYSTORE" \
+     --rpc "$RPC" \
+     <TOKEN_ADDRESS> \
+     <INITIAL_PRICE_LOW> <INITIAL_PRICE_HIGH> \
+     <K_LOW> <K_HIGH> \
+     <N_LOW> <N_HIGH> \
+     <FEE_RATE>
    ```
 
-4. **Deploy Verifier**:
-   ```bash
-   cd src/noir/private_trading/zeroshade
-   scarb build
-   # Declarar y desplegar usando starkli
-   ```
+### Trading Tokens
 
-## 📝 Scripts Disponibles
+**Buy Tokens**:
+```bash
+# First, approve PausableERC20 spending
+starkli invoke 0x03f07d3175ee42202dd88d409b15557625891be4d051ed797d663d63b55f2778 \
+  approve \
+  --account "$ACCOUNT" \
+  --keystore "$KEYSTORE" \
+  --rpc "$RPC" \
+  0x04ea108d263eac17f70af11fef789816d39b2fdf96d051da10c1d27c0f50e67b \
+  <AMOUNT_LOW> <AMOUNT_HIGH>
 
-Ver `scripts/README.md` para documentación completa de scripts.
+# Then buy tokens
+starkli invoke 0x04ea108d263eac17f70af11fef789816d39b2fdf96d051da10c1d27c0f50e67b \
+  buy_tokens \
+  --account "$ACCOUNT" \
+  --keystore "$KEYSTORE" \
+  --rpc "$RPC" \
+  <TOKEN_ADDRESS> \
+  <PAYMENT_AMOUNT_LOW> <PAYMENT_AMOUNT_HIGH>
+```
 
-### Scripts Principales
+**Sell Tokens**:
+```bash
+# Approve token spending
+starkli invoke <TOKEN_ADDRESS> \
+  approve \
+  --account "$ACCOUNT" \
+  --keystore "$KEYSTORE" \
+  --rpc "$RPC" \
+  0x04ea108d263eac17f70af11fef789816d39b2fdf96d051da10c1d27c0f50e67b \
+  <TOKEN_AMOUNT_LOW> <TOKEN_AMOUNT_HIGH>
 
-- **`declare_with_expected_hash.sh`** - Declara todos los contratos
-- **`deploy_launchpad.sh`** - Despliega Launchpad
-- **`deploy_token_factory.sh`** - Despliega TokenFactory
-- **`deploy_token.sh`** - Despliega Token
-- **`generate_proof.sh`** - Genera pruebas ZK (Noir + Garaga)
-- **`clean_rebuild.sh`** - Limpia y recompila desde cero
+# Sell tokens
+starkli invoke 0x04ea108d263eac17f70af11fef789816d39b2fdf96d051da10c1d27c0f50e67b \
+  sell_tokens \
+  --account "$ACCOUNT" \
+  --keystore "$KEYSTORE" \
+  --rpc "$RPC" \
+  <TOKEN_ADDRESS> \
+  <TOKEN_AMOUNT_LOW> <TOKEN_AMOUNT_HIGH>
+```
 
-## 🧪 Testing
+### Minting Payment Tokens
 
-### Compilar y Formatear
+To mint PausableERC20 tokens (for testing or initial liquidity):
 
 ```bash
-# Compilar
+./scripts/mint_pausable_erc20.sh
+# Enter amount (e.g., 100000 for 100,000 USDC)
+```
+
+## Development
+
+### Compiling Contracts
+
+```bash
 scarb build
+```
 
-# Formatear
+### Formatting Code
+
+```bash
 scarb fmt
+```
 
-# Testing con Starknet Foundry
+### Running Frontend
+
+```bash
+cd frontend
+npm run dev
+```
+
+The frontend will be available at `http://localhost:3000`
+
+### Running Backend
+
+```bash
+cd backend
+npm run dev
+```
+
+The backend API will be available at `http://localhost:3001`
+
+The backend automatically monitors the TokenFactory contract for new token deployments and indexes them in a SQLite database.
+
+## Bonding Curve Mechanics
+
+The Launchpad uses a bonding curve to determine token prices. The price calculation follows:
+
+```
+price = initial_price * (total_supply / k)^n
+```
+
+Where:
+- `initial_price`: Starting price when supply is zero
+- `k`: Scaling factor
+- `n`: Curve exponent
+- `total_supply`: Current token supply
+
+When buying:
+- Payment tokens are transferred to the Launchpad
+- Tokens are minted based on the current price
+- Price increases as supply increases
+
+When selling:
+- Tokens are burned
+- Payment tokens are returned based on the new (lower) price
+- Price decreases as supply decreases
+
+## API Endpoints
+
+The backend provides the following endpoints:
+
+- `GET /api/tokens` - List all tokens
+- `GET /api/tokens/:address` - Get token details
+- `GET /api/tokens/creator/:creator` - Get tokens by creator
+- `GET /api/tokens/:address/refresh` - Refresh token metadata
+- `GET /health` - Health check
+
+## Scripts Reference
+
+### Deployment Scripts
+
+- `declare_token.sh` - Declare Token contract
+- `declare_launchpad.sh` - Declare Launchpad contract
+- `declare_pausable_erc20.sh` - Declare PausableERC20 contract
+- `deploy_token.sh` - Deploy a new Token instance
+- `deploy_launchpad.sh` - Deploy Launchpad contract
+- `deploy_pausable_erc20.sh` - Deploy PausableERC20 contract
+- `deploy_all.sh` - Deploy all contracts in sequence
+
+### Utility Scripts
+
+- `mint_pausable_erc20.sh` - Mint payment tokens
+- `set_launchpad.sh` - Configure launchpad for a token
+- `clean_rebuild.sh` - Clean and rebuild contracts
+
+## Testing
+
+### Contract Testing
+
+```bash
+# Using Starknet Foundry (if installed)
 snforge test
 ```
 
-## 📊 Información de Cuenta
+### Manual Testing
 
-**Cuenta de Desarrollo:**
-- Dirección: `0x00b6d3f96ebc06732b5c549baa71e9eede25f432b805b98de2b351e82223c586`
-- Red: Starknet Sepolia
-- RPC: `https://starknet-sepolia-rpc.publicnode.com`
+Use the provided scripts to deploy and interact with contracts on Sepolia testnet.
 
-## 🔗 Recursos
+## Network Information
 
-- [Cairo Book](https://cairo-book.github.io/)
-- [Starknet Docs](https://docs.starknet.io/)
-- [Noir Documentation](https://noir-lang.org/)
-- [Garaga GitHub](https://github.com/keep-starknet-strange/garaga)
-- [Starkli Book](https://book.starkli.rs/)
-- [Starknet Foundry](https://foundry-rs.github.io/starknet-foundry/)
+- **Network**: Starknet Sepolia Testnet
+- **RPC**: `https://starknet-sepolia-rpc.publicnode.com`
+- **Chain ID**: `SN_SEPOLIA`
 
-## 📄 Licencia
+## Troubleshooting
+
+### Contract Declaration Errors
+
+If you encounter "Mismatch compiled class hash" errors:
+1. Ensure you're using the correct CASM hash
+2. Rebuild contracts: `scarb build`
+3. Check the contract hasn't been modified since last declaration
+
+### Frontend Connection Issues
+
+- Ensure the backend is running
+- Check wallet is connected to Sepolia
+- Verify contract addresses in `frontend/src/lib/constants.ts`
+
+### Backend Monitoring Issues
+
+- Check RPC endpoint is accessible
+- Verify TokenFactory address is correct
+- Ensure SQLite database has write permissions
+
+## Contributing
+
+Contributions are welcome! Please ensure:
+- Code follows existing style conventions
+- Contracts are tested before deployment
+- Documentation is updated for new features
+
+## License
 
 MIT
 
----
+## Resources
 
+- [Cairo Documentation](https://cairo-book.github.io/)
+- [Starknet Documentation](https://docs.starknet.io/)
+- [Starkli Book](https://book.starkli.rs/)
+- [Starknet Foundry](https://foundry-rs.github.io/starknet-foundry/)

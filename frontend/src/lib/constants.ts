@@ -1,9 +1,11 @@
 // Contract Addresses (Starknet Sepolia)
 export const CONTRACTS = {
   TOKEN_FACTORY: '0x07ee147bfd2037bcbfe96196689a3ba52e47271a7c5517880ed0f6c88d218c98',
-  LAUNCHPAD: '0x07843bcead611008cd7f15525c5399f9d80adef9e775bf3427435547a1ca7ddf',
-  // USDC address on Starknet Sepolia (ajustar según sea necesario)
-  USDC: '0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8',
+  LAUNCHPAD: '0x04ea108d263eac17f70af11fef789816d39b2fdf96d051da10c1d27c0f50e67b', // v2 con payment_token
+  // PausableERC20 - Payment token (reemplaza USDC)
+  PAUSABLE_ERC20: '0x03f07d3175ee42202dd88d409b15557625891be4d051ed797d663d63b55f2778',
+  // USDC address on Starknet Sepolia (legacy, usar PAUSABLE_ERC20)
+  USDC: '0x03f07d3175ee42202dd88d409b15557625891be4d051ed797d663d63b55f2778',
 } as const
 
 // Network Configuration

@@ -1,12 +1,13 @@
 [package]
 name = "zeroshade"
 version = "0.1.0"
-edition = "2023_11"
+edition = "2023_10"
+cairo-version = "2.12.2"
 
 [dependencies]
-starknet = ">=2.6.0"
-# OpenZeppelin - descomentar cuando sea necesario
-# openzeppelin = { git = "https://github.com/OpenZeppelin/cairo-contracts.git", tag = "v0.14.0" }
+starknet = ">=2.12.0, <3.0.0"
+# OpenZeppelin ya no es necesario - PausableERC20 ahora es un Token simple
+# openzeppelin = { path = "../cairo-contracts" }
 
 [[target.starknet-contract]]
 sierra = true

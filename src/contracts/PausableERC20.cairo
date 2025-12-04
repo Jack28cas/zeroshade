@@ -1,113 +1,204 @@
+use starknet::ContractAddress;
+
+#[starknet::interface]
+pub trait IToken<TContractState> {
+    fn name(self: @TContractState) -> felt252;
+    fn symbol(self: @TContractState) -> felt252;
+    fn decimals(self: @TContractState) -> u8;
+    fn total_supply(self: @TContractState) -> u256;
+    fn balance_of(self: @TContractState, account: ContractAddress) -> u256;
+    fn allowance(self: @TContractState, owner: ContractAddress, spender: ContractAddress) -> u256;
+    fn transfer(ref self: TContractState, recipient: ContractAddress, amount: u256) -> bool;
+    fn transfer_from(
+        ref self: TContractState, sender: ContractAddress, recipient: ContractAddress, amount: u256,
+    ) -> bool;
+    fn approve(ref self: TContractState, spender: ContractAddress, amount: u256) -> bool;
+
+    // Owner-only
+    fn mint(ref self: TContractState, to: ContractAddress, amount: u256);
+    fn burn(ref self: TContractState, from: ContractAddress, amount: u256);
+}
+
 #[starknet::contract]
-pub mod PausableERC20 {
-    use openzeppelin_access::accesscontrol::AccessControlComponent;
-    use openzeppelin_introspection::src5::SRC5Component;
-    use openzeppelin_security::pausable::PausableComponent;
-    use openzeppelin_token::erc20::{ERC20Component, ERC20Config};
-    use starknet::ContractAddress;
+#[feature("deprecated-starknet-consts")]
+mod Token {
+    use starknet::storage::Map;
+    use starknet::storage::{
+        StoragePointerReadAccess, StoragePointerWriteAccess,
+        StorageMapReadAccess, StorageMapWriteAccess
+    };
+    use starknet::{ContractAddress, get_caller_address};
 
-    const PAUSER_ROLE: felt252 = selector!("PAUSER_ROLE");
-    const MINTER_ROLE: felt252 = selector!("MINTER_ROLE");
-
-    // Custom config: 6 decimals
-    struct CustomConfig {}
-    impl ERC20Config for CustomConfig {
-        fn decimals() -> u8 {
-            6
-        }
-    }
-
-    component!(path: AccessControlComponent, storage: accesscontrol, event: AccessControlEvent);
-    component!(path: SRC5Component, storage: src5, event: SRC5Event);
-    component!(path: PausableComponent, storage: pausable, event: PausableEvent);
-    component!(path: ERC20Component::<CustomConfig>, storage: erc20, event: ERC20Event);
-
-    #[abi(embed_v0)]
-    impl AccessControlImpl =
-        AccessControlComponent::AccessControlImpl<ContractState>;
-    impl AccessControlInternalImpl = 
-        AccessControlComponent::InternalImpl<ContractState>;
-
-    #[abi(embed_v0)]
-    impl SRC5Impl = SRC5Component::SRC5Impl<ContractState>;
-
-    #[abi(embed_v0)]
-    impl PausableImpl = PausableComponent::PausableImpl<ContractState>;
-    impl PausableInternalImpl =
-        PausableComponent::InternalImpl<ContractState>;
-
-    #[abi(embed_v0)]
-    impl ERC20MixinImpl =
-        ERC20Component::<CustomConfig>::ERC20MixinImpl<ContractState>;
-    impl ERC20InternalImpl =
-        ERC20Component::<CustomConfig>::InternalImpl<ContractState>;
+    const DECIMALS: u8 = 6;
 
     #[storage]
     struct Storage {
-        #[substorage(v0)]
-        accesscontrol: AccessControlComponent::Storage,
-        #[substorage(v0)]
-        src5: SRC5Component::Storage,
-        #[substorage(v0)]
-        pausable: PausableComponent::Storage,
-        #[substorage(v0)]
-        erc20: ERC20Component::<CustomConfig>::Storage,
+        name: felt252,
+        symbol: felt252,
+        decimals: u8,
+        total_supply: u256,
+        balances: Map<ContractAddress, u256>,
+        allowances: Map<(ContractAddress, ContractAddress), u256>,
+        owner: ContractAddress,
+        version: u8,
     }
 
     #[event]
     #[derive(Drop, starknet::Event)]
     enum Event {
-        #[flat]
-        AccessControlEvent: AccessControlComponent::Event,
-        #[flat]
-        SRC5Event: SRC5Component::Event,
-        #[flat]
-        PausableEvent: PausableComponent::Event,
-        #[flat]
-        ERC20Event: ERC20Component::<CustomConfig>::Event,
+        Transfer: Transfer,
+        Approval: Approval,
     }
 
-    impl ERC20HooksImpl of ERC20Component::<CustomConfig>::ERC20HooksTrait<ContractState> {
-        fn before_update(
-            ref self: ERC20Component::<CustomConfig>::ComponentState<ContractState>,
-            from: ContractAddress,
-            recipient: ContractAddress,
-            amount: u256,
-        ) {
-            let contract_state = self.get_contract();
-            contract_state.pausable.assert_not_paused();
-        }
+    #[derive(Drop, starknet::Event)]
+    struct Transfer {
+        from: ContractAddress,
+        to: ContractAddress,
+        value: u256,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct Approval {
+        owner: ContractAddress,
+        spender: ContractAddress,
+        value: u256,
     }
 
     #[constructor]
-    fn constructor(ref self: ContractState, admin: ContractAddress) {
-        let name = "PausableToken";
-        let symbol = "PST";
+    fn constructor(
+        ref self: ContractState,
+        name: felt252,
+        symbol: felt252,
+        initial_supply: u256,
+        owner: ContractAddress,
+    ) {
+        self.name.write(name);
+        self.symbol.write(symbol);
+        self.decimals.write(DECIMALS);
 
-        self.erc20.initializer(name, symbol);
-
-        self.accesscontrol.initializer();
-        self.accesscontrol._grant_role(AccessControlComponent::DEFAULT_ADMIN_ROLE, admin);
-
-        self.accesscontrol._grant_role(PAUSER_ROLE, admin);
-        self.accesscontrol._grant_role(MINTER_ROLE, admin);
+        self.owner.write(owner);
+        
+        // Mint initial supply to owner if > 0
+        if initial_supply > 0 {
+            self.total_supply.write(initial_supply);
+            self.balances.write(owner, initial_supply);
+            self.emit(Transfer { from: zero_address(), to: owner, value: initial_supply });
+        } else {
+            self.total_supply.write(0);
+        }
+        
+        self.version.write(2);
     }
 
-    #[external(v0)]
-    fn pause(ref self: ContractState) {
-        self.accesscontrol.assert_only_role(PAUSER_ROLE);
-        self.pausable.pause();
+    #[abi(embed_v0)]
+    impl TokenImpl of super::IToken<ContractState> {
+        fn name(self: @ContractState) -> felt252 {
+            self.name.read()
+        }
+
+        fn symbol(self: @ContractState) -> felt252 {
+            self.symbol.read()
+        }
+
+        fn decimals(self: @ContractState) -> u8 {
+            self.decimals.read()
+        }
+
+        fn total_supply(self: @ContractState) -> u256 {
+            self.total_supply.read()
+        }
+
+        fn balance_of(self: @ContractState, account: ContractAddress) -> u256 {
+            self.balances.read(account)
+        }
+
+        fn allowance(
+            self: @ContractState,
+            owner: ContractAddress,
+            spender: ContractAddress,
+        ) -> u256 {
+            self.allowances.read((owner, spender))
+        }
+
+        fn transfer(ref self: ContractState, recipient: ContractAddress, amount: u256) -> bool {
+            let sender = get_caller_address();
+            InternalImpl::_transfer(ref self, sender, recipient, amount);
+            true
+        }
+
+        fn transfer_from(
+            ref self: ContractState,
+            sender: ContractAddress,
+            recipient: ContractAddress,
+            amount: u256,
+        ) -> bool {
+            let caller = get_caller_address();
+            let current_allowance = self.allowances.read((sender, caller));
+            assert(current_allowance >= amount, 'Insufficient allowance');
+            self.allowances.write((sender, caller), current_allowance - amount);
+            InternalImpl::_transfer(ref self, sender, recipient, amount);
+            true
+        }
+
+        fn approve(ref self: ContractState, spender: ContractAddress, amount: u256) -> bool {
+            let owner = get_caller_address();
+            self.allowances.write((owner, spender), amount);
+            self.emit(Approval { owner, spender, value: amount });
+            true
+        }
+
+        fn mint(ref self: ContractState, to: ContractAddress, amount: u256) {
+            let caller = get_caller_address();
+            assert(caller == self.owner.read(), 'Only owner can mint');
+
+            let supply = self.total_supply.read();
+            let balance = self.balances.read(to);
+
+            self.total_supply.write(supply + amount);
+            self.balances.write(to, balance + amount);
+
+            self.emit(Transfer { from: zero_address(), to, value: amount });
+        }
+
+        fn burn(ref self: ContractState, from: ContractAddress, amount: u256) {
+            let caller = get_caller_address();
+            assert(caller == self.owner.read(), 'Only owner can burn');
+
+            let supply = self.total_supply.read();
+            let balance = self.balances.read(from);
+            assert(balance >= amount, 'Insufficient balance to burn');
+
+            self.total_supply.write(supply - amount);
+            self.balances.write(from, balance - amount);
+
+            self.emit(Transfer { from, to: zero_address(), value: amount });
+        }
     }
 
-    #[external(v0)]
-    fn unpause(ref self: ContractState) {
-        self.accesscontrol.assert_only_role(PAUSER_ROLE);
-        self.pausable.unpause();
+    #[generate_trait]
+    impl InternalImpl of InternalTrait {
+        fn _transfer(
+            ref self: ContractState,
+            sender: ContractAddress,
+            recipient: ContractAddress,
+            amount: u256,
+        ) {
+            assert(sender != zero_address(), 'Transfer from zero address');
+            assert(recipient != zero_address(), 'Transfer to zero address');
+
+            let bal = self.balances.read(sender);
+            assert(bal >= amount, 'Insufficient balance');
+
+            self.balances.write(sender, bal - amount);
+
+            let rec_bal = self.balances.read(recipient);
+            self.balances.write(recipient, rec_bal + amount);
+
+            self.emit(Transfer { from: sender, to: recipient, value: amount });
+        }
     }
 
-    #[external(v0)]
-    fn mint(ref self: ContractState, recipient: ContractAddress, amount: u256) {
-        self.accesscontrol.assert_only_role(MINTER_ROLE);
-        self.erc20.mint(recipient, amount);
+    fn zero_address() -> ContractAddress {
+        starknet::contract_address_const::<0>()
     }
 }
