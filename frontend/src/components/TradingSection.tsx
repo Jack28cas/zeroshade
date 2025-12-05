@@ -314,40 +314,40 @@ export function TradingSection({ tokenAddress, tokenName, tokenSymbol }: Trading
 
   if (!isConnected) {
     return (
-      <div className="bg-gray-800 rounded-lg p-8 text-center">
-        <p className="text-gray-400">Conecta tu wallet para comprar/vender tokens</p>
+      <div className="bg-gray-900/50 rounded-lg p-8 text-center border border-gray-800">
+        <p className="text-[#dfdfff] uppercase">Connect your wallet to buy/sell tokens</p>
       </div>
     )
   }
 
   return (
-    <div className="bg-gray-800 rounded-lg p-8">
-      <h2 className="text-2xl font-bold text-white mb-6">
+    <div className="bg-gray-900/50 rounded-lg p-8 border border-gray-800">
+      <h2 className="text-3xl font-bold uppercase mb-6 bg-gradient-to-r from-[#a694ff] to-[#6365ff] bg-clip-text text-transparent tracking-wider">
         {tokenName || 'Token'} ({tokenSymbol || 'TKN'})
       </h2>
 
       {/* Token Info */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <div className="bg-gray-700 rounded-lg p-4">
-          <p className="text-sm text-gray-400 mb-1">Precio Actual</p>
+        <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
+          <p className="text-sm text-[#dfdfff] mb-1 uppercase tracking-wide">Current Price</p>
           <p className="text-xl font-bold text-white">
             {currentPrice ? formatWithDecimals(currentPrice, DECIMALS) : '---'}
           </p>
         </div>
-        <div className="bg-gray-700 rounded-lg p-4">
-          <p className="text-sm text-gray-400 mb-1">Liquidez</p>
+        <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
+          <p className="text-sm text-[#dfdfff] mb-1 uppercase tracking-wide">Liquidity</p>
           <p className="text-xl font-bold text-white">
             {liquidity ? formatWithDecimals(liquidity, DECIMALS) : '---'}
           </p>
         </div>
-        <div className="bg-gray-700 rounded-lg p-4">
-          <p className="text-sm text-gray-400 mb-1">Tu Balance (Tokens)</p>
+        <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
+          <p className="text-sm text-[#dfdfff] mb-1 uppercase tracking-wide">Your Balance (Tokens)</p>
           <p className="text-xl font-bold text-white">
             {userTokenBalance ? formatWithDecimals(userTokenBalance, DECIMALS) : '0'}
           </p>
         </div>
-        <div className="bg-gray-700 rounded-lg p-4">
-          <p className="text-sm text-gray-400 mb-1">Tu Balance (USDC)</p>
+        <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
+          <p className="text-sm text-[#dfdfff] mb-1 uppercase tracking-wide">Your Balance (USDC)</p>
           <p className="text-xl font-bold text-white">
             {userPausableERC20Balance !== null ? formatWithDecimals(userPausableERC20Balance, DECIMALS) : '---'}
           </p>
@@ -356,8 +356,8 @@ export function TradingSection({ tokenAddress, tokenName, tokenSymbol }: Trading
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Buy Section */}
-        <div className="bg-gray-700 rounded-lg p-6">
-          <h3 className="text-xl font-semibold text-white mb-4">Comprar Tokens</h3>
+        <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700">
+          <h3 className="text-xl font-bold uppercase text-white mb-4 tracking-wider">Buy Tokens</h3>
           
           {/* Botón para aprobar PausableERC20 */}
           <div className="mb-4">
@@ -365,35 +365,35 @@ export function TradingSection({ tokenAddress, tokenName, tokenSymbol }: Trading
               type="button"
               onClick={handleApproveUSDC}
               disabled={loading}
-              className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium transition-colors"
+              className="w-full px-4 py-2 bg-gradient-to-r from-[#a694ff] to-[#6365ff] hover:from-[#6365ff] hover:to-[#a694ff] disabled:from-gray-600 disabled:to-gray-600 disabled:cursor-not-allowed text-white rounded-lg text-sm font-bold uppercase tracking-wide transition-all duration-300 shadow-lg shadow-[#6365ff]/50"
             >
-              {loading ? 'Aprobando...' : 'Aprobar USDC (PausableERC20)'}
+              {loading ? 'Approving...' : 'Approve USDC (PausableERC20)'}
             </button>
-            <p className="text-xs text-gray-400 mt-1 text-center">
-              Necesario antes de comprar tokens
+            <p className="text-xs text-[#dfdfff]/70 mt-1 text-center uppercase">
+              Required before buying tokens
             </p>
           </div>
 
           <form onSubmit={handleBuyTokens} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Cantidad (USDC)
+              <label className="block text-sm font-medium text-[#dfdfff] mb-2 uppercase tracking-wide">
+                Amount (USDC)
               </label>
               <input
                 type="text"
                 value={buyAmount}
                 onChange={(e) => setBuyAmount(e.target.value)}
                 required
-                className="w-full px-4 py-2 bg-gray-600 text-white rounded-lg border border-gray-500 focus:border-primary-500 focus:outline-none"
+                className="w-full px-4 py-2 bg-gray-800/50 text-white rounded-lg border border-gray-700 focus:border-[#a694ff] focus:outline-none focus:ring-2 focus:ring-[#a694ff]/50"
                 placeholder="0.0"
               />
               {userPausableERC20Balance !== null && (
                 <button
                   type="button"
                   onClick={() => setBuyAmount(formatWithDecimals(userPausableERC20Balance, DECIMALS))}
-                  className="mt-2 text-sm text-primary-400 hover:text-primary-300"
+                  className="mt-2 text-sm text-[#a694ff] hover:text-[#6365ff] transition-colors"
                 >
-                  Usar máximo: {formatWithDecimals(userPausableERC20Balance, DECIMALS)} USDC
+                  Use max: {formatWithDecimals(userPausableERC20Balance, DECIMALS)} USDC
                 </button>
               )}
             </div>
@@ -401,65 +401,65 @@ export function TradingSection({ tokenAddress, tokenName, tokenSymbol }: Trading
             <button
               type="submit"
               disabled={loading}
-              className="w-full px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg font-semibold transition-colors"
+              className="w-full px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-500 disabled:from-gray-600 disabled:to-gray-600 disabled:cursor-not-allowed text-white rounded-lg font-bold uppercase tracking-wide transition-all duration-300 shadow-lg shadow-green-500/50"
             >
-              {loading ? 'Comprando...' : 'Comprar Tokens'}
+              {loading ? 'Buying...' : 'Buy Tokens'}
             </button>
           </form>
         </div>
 
         {/* Sell Section */}
-        <div className="bg-gray-700 rounded-lg p-6">
-          <h3 className="text-xl font-semibold text-white mb-4">Vender Tokens</h3>
+        <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700">
+          <h3 className="text-xl font-bold uppercase text-white mb-4 tracking-wider">Sell Tokens</h3>
           
           <form onSubmit={handleSellTokens} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Cantidad de Tokens
+              <label className="block text-sm font-medium text-[#dfdfff] mb-2 uppercase tracking-wide">
+                Amount of Tokens
               </label>
               <input
                 type="text"
                 value={sellAmount}
                 onChange={(e) => setSellAmount(e.target.value)}
                 required
-                className="w-full px-4 py-2 bg-gray-600 text-white rounded-lg border border-gray-500 focus:border-primary-500 focus:outline-none"
+                className="w-full px-4 py-2 bg-gray-800/50 text-white rounded-lg border border-gray-700 focus:border-[#a694ff] focus:outline-none focus:ring-2 focus:ring-[#a694ff]/50"
                 placeholder="0.0"
               />
               {userTokenBalance && (
                 <button
                   type="button"
                   onClick={() => setSellAmount(formatWithDecimals(userTokenBalance, DECIMALS))}
-                  className="mt-2 text-sm text-primary-400 hover:text-primary-300"
+                  className="mt-2 text-sm text-[#a694ff] hover:text-[#6365ff] transition-colors"
                 >
-                  Usar máximo: {formatWithDecimals(userTokenBalance, DECIMALS)}
+                  Use max: {formatWithDecimals(userTokenBalance, DECIMALS)}
                 </button>
               )}
             </div>
 
             {/* NOTA: Ya no se necesita approve - el Launchpad hace burn directamente */}
-            <div className="w-full px-4 py-2 bg-gray-600 text-gray-400 rounded-lg text-sm mb-2 text-center">
-              ℹ️ No se requiere aprobación - el Launchpad quema tokens directamente
+            <div className="w-full px-4 py-2 bg-[#6365ff]/20 text-[#dfdfff] rounded-lg text-sm mb-2 text-center border border-[#6365ff]/30">
+              ℹ️ No approval required - Launchpad burns tokens directly
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full px-6 py-3 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg font-semibold transition-colors"
+              className="w-full px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-500 disabled:from-gray-600 disabled:to-gray-600 disabled:cursor-not-allowed text-white rounded-lg font-bold uppercase tracking-wide transition-all duration-300 shadow-lg shadow-red-500/50"
             >
-              {loading ? 'Vendiendo...' : 'Vender Tokens'}
+              {loading ? 'Selling...' : 'Sell Tokens'}
             </button>
           </form>
         </div>
       </div>
 
       {error && (
-        <div className="mt-6 p-4 bg-red-500/20 border border-red-500/50 rounded-lg text-red-400">
+        <div className="mt-6 p-4 bg-red-500/20 border border-red-500/50 rounded-lg text-red-300">
           {error}
         </div>
       )}
 
       {success && (
-        <div className="mt-6 p-4 bg-green-500/20 border border-green-500/50 rounded-lg text-green-400">
+        <div className="mt-6 p-4 bg-green-500/20 border border-green-500/50 rounded-lg text-green-300">
           {success}
         </div>
       )}

@@ -28,14 +28,14 @@ export function WalletButton() {
   if (isConnected && address) {
     return (
       <div className="flex items-center gap-4">
-        <div className="px-4 py-2 bg-green-500/20 text-green-400 rounded-lg border border-green-500/30">
+        <div className="px-4 py-2 bg-[#6365ff]/20 text-[#dfdfff] rounded-lg border border-[#6365ff]/30">
           {displayAddress}
         </div>
         <button
           onClick={disconnectWallet}
-          className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+          className="px-6 py-2 bg-red-600/80 hover:bg-red-600 text-white rounded-lg transition-colors font-semibold uppercase tracking-wide"
         >
-          Desconectar
+          Disconnect
         </button>
       </div>
     )
@@ -44,9 +44,9 @@ export function WalletButton() {
   return (
     <button
       onClick={connectWallet}
-      className="px-6 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors font-semibold"
+      className="px-6 py-2 bg-gradient-to-r from-[#a694ff] to-[#6365ff] hover:from-[#6365ff] hover:to-[#a694ff] text-white rounded-lg transition-all duration-300 font-bold uppercase tracking-wider shadow-lg shadow-[#6365ff]/50"
     >
-      Conectar Wallet
+      CONNECT WALLET
     </button>
   )
 }

@@ -17,23 +17,32 @@ TOKEN_CLASS_HASH="0x0000c1da35e0ca183429db3e8fcb0425b9308e6cd50850412ce7aa899ce8
 echo "🚀 Desplegando Token Contract..."
 echo ""
 
-# Parámetros del constructor (ajusta según necesites)
-# Nota: decimals está hardcodeado a 6 en el contrato
-# IMPORTANTE: felt252 debe ser un número válido (no puede exceder el rango)
-read -p "Token name (felt252, número pequeño, ej: 123456789): " TOKEN_NAME
-read -p "Token symbol (felt252, número pequeño, ej: 987654321): " TOKEN_SYMBOL
-read -p "Initial supply (u256, ej: 1000000000000 para 1M tokens con 6 decimals): " INITIAL_SUPPLY
+# Función para convertir texto a felt252 (hash simple)
+text_to_felt252() {
+    local text="$1"
+    # Si es numérico, usarlo directamente
+    if [[ "$text" =~ ^[0-9]+$ ]]; then
+        echo "$text"
+    else
+        # Convertir texto a hash numérico simple (suma de códigos ASCII)
+        local hash=0
+        for (( i=0; i<${#text}; i++ )); do
+            hash=$((hash + $(printf '%d' "'${text:$i:1}")))
+        done
+        # Multiplicar por un factor para evitar colisiones
+        hash=$((hash * 256))
+        echo "$hash"
+    fi
+}
 
-# Validar que los valores sean números válidos y no demasiado grandes
-if ! [[ "$TOKEN_NAME" =~ ^[0-9]+$ ]] || [ ${#TOKEN_NAME} -gt 76 ]; then
-    echo "❌ Error: Token name debe ser un número y no puede exceder 76 dígitos"
-    exit 1
-fi
+# Parámetros del constructor
+read -p "Token name (texto o número, ej: zero o 123456789): " TOKEN_NAME_INPUT
+read -p "Token symbol (texto o número, ej: ZRO o 987654321): " TOKEN_SYMBOL_INPUT
+read -p "Initial supply (u256, ej: 0 para empezar sin supply): " INITIAL_SUPPLY
 
-if ! [[ "$TOKEN_SYMBOL" =~ ^[0-9]+$ ]] || [ ${#TOKEN_SYMBOL} -gt 76 ]; then
-    echo "❌ Error: Token symbol debe ser un número y no puede exceder 76 dígitos"
-    exit 1
-fi
+# Convertir a felt252
+TOKEN_NAME=$(text_to_felt252 "$TOKEN_NAME_INPUT")
+TOKEN_SYMBOL=$(text_to_felt252 "$TOKEN_SYMBOL_INPUT")
 
 # Obtener dirección del owner (tu cuenta)
 echo "🔍 Obteniendo dirección de la cuenta..."
@@ -93,8 +102,10 @@ echo "✅ Owner: $OWNER"
 
 echo ""
 echo "Desplegando con parámetros:"
-echo "  Name: $TOKEN_NAME"
-echo "  Symbol: $TOKEN_SYMBOL"
+echo "  Name (original): $TOKEN_NAME_INPUT"
+echo "  Name (felt252): $TOKEN_NAME"
+echo "  Symbol (original): $TOKEN_SYMBOL_INPUT"
+echo "  Symbol (felt252): $TOKEN_SYMBOL"
 echo "  Decimals: 6 (hardcoded)"
 echo "  Initial Supply: $INITIAL_SUPPLY"
 echo "  Owner: $OWNER"

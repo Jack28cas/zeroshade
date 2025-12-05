@@ -11,8 +11,8 @@ RPC="${RPC:-https://starknet-sepolia-rpc.publicnode.com}"
 ACCOUNT_EXPANDED=$(eval echo "$ACCOUNT")
 KEYSTORE_EXPANDED=$(eval echo "$KEYSTORE")
 
-# Direcciones
-LAUNCHPAD_ADDRESS="0x07843bcead611008cd7f15525c5399f9d80adef9e775bf3427435547a1ca7ddf"
+# Direcciones (v2 con payment_token)
+LAUNCHPAD_ADDRESS="0x04ea108d263eac17f70af11fef789816d39b2fdf96d051da10c1d27c0f50e67b"
 
 echo "🔧 Configurando Launchpad en Token..."
 echo ""

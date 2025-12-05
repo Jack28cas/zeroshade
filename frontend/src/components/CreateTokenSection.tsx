@@ -27,7 +27,7 @@ export function CreateTokenSection() {
   const handleCreateToken = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!isConnected || !account) {
-      setError('Por favor conecta tu wallet primero')
+      setError('Please connect your wallet first')
       return
     }
 
@@ -103,12 +103,42 @@ export function CreateTokenSection() {
       })
       
       // Show success immediately (don't wait for transaction confirmation)
-      // TokenFactory retorna 0x0 (versión simulada), así que usamos 0x0 como placeholder
-      setCreatedTokenAddress('0x0')
-      setSuccess(`Token creado! (Versión simulada - retorna 0x0). Transaction: ${result.transaction_hash}`)
-      setStep('launch')
+      // TokenFactory retorna 0x0 (versión simulada), así que desplegamos automáticamente
+      setSuccess(`Token created! Deploying token automatically...`)
+      
+      // Automatically deploy the token via backend API
+      try {
+        const deployResponse = await fetch('http://localhost:3001/api/tokens/deploy', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            tokenName,
+            tokenSymbol,
+            initialSupply,
+            ownerAddress: account.address,
+          }),
+        })
+        
+        if (!deployResponse.ok) {
+          const errorData = await deployResponse.json()
+          throw new Error(errorData.error || 'Failed to deploy token')
+        }
+        
+        const deployData = await deployResponse.json()
+        setCreatedTokenAddress(deployData.address)
+        setSuccess(`Token created and deployed successfully! Address: ${deployData.address}`)
+        setStep('launch')
+      } catch (deployError: any) {
+        console.error('Error deploying token:', deployError)
+        // If deployment fails, still allow manual entry
+        setCreatedTokenAddress('0x0')
+        setError(`Token created but auto-deployment failed: ${deployError.message}. Please deploy manually and enter the address.`)
+        setStep('launch')
+      }
     } catch (err: any) {
-      setError(err.message || 'Error al crear el token')
+      setError(err.message || 'Error creating token')
       console.error('Error creating token:', err)
     } finally {
       setLoading(false)
@@ -118,11 +148,11 @@ export function CreateTokenSection() {
   const handleLaunchToken = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!isConnected || !account) {
-      setError('Por favor conecta tu wallet')
+      setError('Please connect your wallet')
       return
     }
     if (!createdTokenAddress || createdTokenAddress.trim() === '') {
-      setError('Por favor ingresa la dirección del token')
+      setError('Please enter the token address')
       return
     }
     
@@ -131,7 +161,7 @@ export function CreateTokenSection() {
     // But in Starknet, both can be 66 chars, so we check if it looks like a valid address
     const address = createdTokenAddress.trim()
     if (!address.startsWith('0x') || address.length < 10) {
-      setError('Por favor ingresa una dirección de contrato válida (debe empezar con 0x)')
+      setError('Please enter a valid contract address (must start with 0x)')
       return
     }
     
@@ -187,7 +217,7 @@ export function CreateTokenSection() {
       })
       
       // Show success immediately (don't wait for transaction)
-      setSuccess(`Token lanzado exitosamente! Transaction: ${result.transaction_hash}`)
+      setSuccess(`Token launched successfully! Transaction: ${result.transaction_hash}`)
       
       // Try to wait in background
       account.waitForTransaction(result.transaction_hash)
@@ -205,7 +235,7 @@ export function CreateTokenSection() {
       setInitialSupply('')
       setInitialPrice('')
     } catch (err: any) {
-      setError(err.message || 'Error al lanzar el token')
+      setError(err.message || 'Error launching token')
       console.error('Error launching token:', err)
     } finally {
       setLoading(false)
@@ -214,8 +244,10 @@ export function CreateTokenSection() {
 
   if (!isConnected) {
     return (
-      <div className="bg-gray-800 rounded-lg p-8 text-center">
-        <p className="text-gray-400 mb-4">Conecta tu wallet para crear tokens</p>
+      <div className="bg-gray-900/50 rounded-lg p-12 text-center border border-gray-800">
+        <p className="text-[#dfdfff] text-base font-medium uppercase tracking-wider">
+          CONNECT YOUR WALLET TO CREATE TOKENS
+        </p>
       </div>
     )
   }
@@ -224,30 +256,29 @@ export function CreateTokenSection() {
     <div className="space-y-8">
       {/* Create Token Form */}
       {step === 'create' && (
-        <div className="bg-gray-800 rounded-lg p-8">
-          <h2 className="text-2xl font-bold text-white mb-6">Crear tu Token</h2>
+        <div className="bg-gray-900/50 rounded-xl p-8 lg:p-10 border border-gray-800">
+          <h2 className="text-3xl font-bold uppercase mb-8 bg-gradient-to-r from-[#a694ff] to-[#6365ff] bg-clip-text text-transparent tracking-wider">
+            Create Your Token
+          </h2>
           
           <form onSubmit={handleCreateToken} className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Nombre del Token (felt252 - valor numérico)
+              <label className="block text-sm font-medium text-[#dfdfff] mb-3 uppercase tracking-wide">
+                Token Name
               </label>
               <input
                 type="text"
                 value={tokenName}
                 onChange={(e) => setTokenName(e.target.value)}
                 required
-                className="w-full px-4 py-2 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-primary-500 focus:outline-none"
-                placeholder="Ej: 123456789 (o texto, se convertirá a número)"
+                className="w-full px-4 py-3 bg-gray-800/50 text-white rounded-lg border border-gray-700 focus:border-[#a694ff] focus:outline-none focus:ring-2 focus:ring-[#a694ff]/50 transition-all"
+                placeholder="Enter token name"
               />
-              <p className="mt-1 text-xs text-gray-400">
-                Puedes usar texto o un número. El texto se convertirá automáticamente.
-              </p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Símbolo del Token (felt252 - valor numérico)
+              <label className="block text-sm font-medium text-[#dfdfff] mb-3 uppercase tracking-wide">
+                Token Symbol
               </label>
               <input
                 type="text"
@@ -255,29 +286,23 @@ export function CreateTokenSection() {
                 onChange={(e) => setTokenSymbol(e.target.value.toUpperCase())}
                 required
                 maxLength={10}
-                className="w-full px-4 py-2 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-primary-500 focus:outline-none"
-                placeholder="Ej: 987654321 (o texto, se convertirá a número)"
+                className="w-full px-4 py-3 bg-gray-800/50 text-white rounded-lg border border-gray-700 focus:border-[#a694ff] focus:outline-none focus:ring-2 focus:ring-[#a694ff]/50 transition-all"
+                placeholder="Enter token symbol"
               />
-              <p className="mt-1 text-xs text-gray-400">
-                Puedes usar texto o un número. El texto se convertirá automáticamente.
-              </p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Suministro Inicial (6 decimales)
+              <label className="block text-sm font-medium text-[#dfdfff] mb-3 uppercase tracking-wide">
+                Initial Supply
               </label>
               <input
                 type="text"
                 value={initialSupply}
                 onChange={(e) => setInitialSupply(e.target.value)}
                 required
-                className="w-full px-4 py-2 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-primary-500 focus:outline-none"
-                placeholder="Ej: 1000000 (para 1M tokens)"
+                className="w-full px-4 py-3 bg-gray-800/50 text-white rounded-lg border border-gray-700 focus:border-[#a694ff] focus:outline-none focus:ring-2 focus:ring-[#a694ff]/50 transition-all"
+                placeholder="Enter initial supply (6 decimals)"
               />
-              <p className="mt-1 text-sm text-gray-400">
-                El token siempre usa 6 decimales
-              </p>
             </div>
 
             {error && (
@@ -295,9 +320,9 @@ export function CreateTokenSection() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full px-6 py-3 bg-primary-600 hover:bg-primary-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded-lg font-semibold transition-colors"
+              className="w-full px-6 py-4 bg-gradient-to-r from-[#a694ff] to-[#6365ff] hover:from-[#6365ff] hover:to-[#a694ff] disabled:from-gray-700 disabled:to-gray-700 disabled:cursor-not-allowed text-white rounded-lg font-bold uppercase tracking-wider transition-all duration-300 shadow-lg shadow-[#6365ff]/50 hover:shadow-xl hover:shadow-[#6365ff]/60"
             >
-              {loading ? 'Creando...' : 'Crear Token'}
+              {loading ? 'Creating...' : 'Create Token'}
             </button>
           </form>
         </div>
@@ -305,28 +330,25 @@ export function CreateTokenSection() {
 
       {/* Launch Token Form */}
       {step === 'launch' && (
-        <div className="bg-gray-800 rounded-lg p-8">
-          <h2 className="text-2xl font-bold text-white mb-6">Lanzar Token en Launchpad</h2>
+        <div className="bg-gray-900/50 rounded-xl p-8 lg:p-10 border border-gray-800">
+          <h2 className="text-3xl font-bold uppercase mb-8 bg-gradient-to-r from-[#a694ff] to-[#6365ff] bg-clip-text text-transparent tracking-wider">
+            Launch Token on Launchpad
+          </h2>
           
           <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Dirección del Token (ContractAddress)
+            <label className="block text-sm font-medium text-[#dfdfff] mb-3 uppercase tracking-wide">
+              Token Address
             </label>
             <input
               type="text"
               value={createdTokenAddress || ''}
               onChange={(e) => setCreatedTokenAddress(e.target.value)}
               required
-              className="w-full px-4 py-2 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-primary-500 focus:outline-none"
-              placeholder="0x... (ingresa la dirección del token desplegado)"
+              className="w-full px-4 py-3 bg-gray-800/50 text-white rounded-lg border border-gray-700 focus:border-[#a694ff] focus:outline-none focus:ring-2 focus:ring-[#a694ff]/50 transition-all"
+              placeholder="0x..."
             />
-            <p className="mt-1 text-xs text-yellow-400">
-              ⚠️ <strong>Nota:</strong> El TokenFactory retorna 0x0 (versión simulada para hackathon). 
-              Debes desplegar el token manualmente usando el script <code className="bg-gray-800 px-1 rounded">scripts/deploy_token.sh</code> 
-              y luego ingresar la dirección aquí.
-            </p>
             {createdTokenAddress && createdTokenAddress !== '0x0' && (
-              <p className="mt-1 text-xs text-green-400">
+              <p className="mt-2 text-xs text-green-400">
                 ✓ Token: {createdTokenAddress.slice(0, 10)}...
               </p>
             )}
@@ -334,55 +356,58 @@ export function CreateTokenSection() {
 
           <form onSubmit={handleLaunchToken} className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Precio Inicial (escalado a 1e6)
+              <label className="block text-sm font-medium text-[#dfdfff] mb-3 uppercase tracking-wide">
+                Initial Price
               </label>
               <input
                 type="text"
                 value={initialPrice}
                 onChange={(e) => setInitialPrice(e.target.value)}
                 required
-                className="w-full px-4 py-2 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-primary-500 focus:outline-none"
-                placeholder="Ej: 1000000 (para 1.0)"
+                className="w-full px-4 py-3 bg-gray-800/50 text-white rounded-lg border border-gray-700 focus:border-[#a694ff] focus:outline-none focus:ring-2 focus:ring-[#a694ff]/50 transition-all"
+                placeholder="Enter initial price (scaled to 1e6)"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                K (Constante de la curva)
+              <label className="block text-sm font-medium text-[#dfdfff] mb-3 uppercase tracking-wide">
+                K
               </label>
               <input
                 type="text"
                 value={k}
                 onChange={(e) => setK(e.target.value)}
                 required
-                className="w-full px-4 py-2 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-primary-500 focus:outline-none"
+                className="w-full px-4 py-3 bg-gray-800/50 text-white rounded-lg border border-gray-700 focus:border-[#a694ff] focus:outline-none focus:ring-2 focus:ring-[#a694ff]/50 transition-all"
+                placeholder="Enter K value"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                N (Exponente)
+              <label className="block text-sm font-medium text-[#dfdfff] mb-3 uppercase tracking-wide">
+                N
               </label>
               <input
                 type="text"
                 value={n}
                 onChange={(e) => setN(e.target.value)}
                 required
-                className="w-full px-4 py-2 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-primary-500 focus:outline-none"
+                className="w-full px-4 py-3 bg-gray-800/50 text-white rounded-lg border border-gray-700 focus:border-[#a694ff] focus:outline-none focus:ring-2 focus:ring-[#a694ff]/50 transition-all"
+                placeholder="Enter N value"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Fee Rate (basis points, 100 = 1%)
+              <label className="block text-sm font-medium text-[#dfdfff] mb-3 uppercase tracking-wide">
+                Fee Rate
               </label>
               <input
                 type="text"
                 value={feeRate}
                 onChange={(e) => setFeeRate(e.target.value)}
                 required
-                className="w-full px-4 py-2 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-primary-500 focus:outline-none"
+                className="w-full px-4 py-3 bg-gray-800/50 text-white rounded-lg border border-gray-700 focus:border-[#a694ff] focus:outline-none focus:ring-2 focus:ring-[#a694ff]/50 transition-all"
+                placeholder="Enter fee rate (basis points, 100 = 1%)"
               />
             </div>
 
@@ -402,16 +427,16 @@ export function CreateTokenSection() {
               <button
                 type="button"
                 onClick={() => setStep('create')}
-                className="flex-1 px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-lg font-semibold transition-colors"
+                className="flex-1 px-6 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-lg font-bold uppercase tracking-wide transition-colors"
               >
-                Volver
+                Back
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="flex-1 px-6 py-3 bg-primary-600 hover:bg-primary-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded-lg font-semibold transition-colors"
+                className="flex-1 px-6 py-3 bg-gradient-to-r from-[#a694ff] to-[#6365ff] hover:from-[#6365ff] hover:to-[#a694ff] disabled:from-gray-700 disabled:to-gray-700 disabled:cursor-not-allowed text-white rounded-lg font-bold uppercase tracking-wide transition-all duration-300 shadow-lg shadow-[#6365ff]/50 hover:shadow-xl hover:shadow-[#6365ff]/60"
               >
-                {loading ? 'Lanzando...' : 'Lanzar Token'}
+                {loading ? 'Launching...' : 'Launch Token'}
               </button>
             </div>
           </form>

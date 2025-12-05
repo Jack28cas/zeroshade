@@ -1,13 +1,10 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
 import './globals.css'
 import { WalletProvider } from '@/contexts/WalletContext'
 
-const inter = Inter({ subsets: ['latin'] })
-
 export const metadata: Metadata = {
-  title: 'ZumpFun - Pump.fun Privado',
-  description: 'Plataforma de lanzamiento de tokens tipo Pump.fun con privacidad en Starknet',
+  title: 'Zero Shade - Launch Your Memecoin',
+  description: 'Code-free, private memecoin launchpad on Starknet',
 }
 
 export default function RootLayout({
@@ -16,8 +13,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="es">
-      <body className={inter.className}>
+    <html lang="en">
+      <body>
         <WalletProvider>
           {children}
         </WalletProvider>

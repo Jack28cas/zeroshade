@@ -65,44 +65,50 @@ export function TokenList() {
 
   if (loading) {
     return (
-      <div className="bg-gray-800 rounded-lg p-8 text-center">
-        <p className="text-gray-400">Cargando tokens...</p>
+      <div className="bg-gray-900/50 rounded-lg p-8 text-center border border-gray-800">
+        <p className="text-[#dfdfff]">Cargando tokens...</p>
       </div>
     )
   }
 
   return (
     <div className="space-y-6">
-      <div className="bg-gray-800 rounded-lg p-8">
-        <h2 className="text-2xl font-bold text-white mb-6">Tokens Disponibles</h2>
+      <div className="bg-gray-900/50 rounded-lg p-8 border border-gray-800">
+        <h2 className="text-3xl font-bold uppercase mb-6 bg-gradient-to-r from-[#a694ff] to-[#6365ff] bg-clip-text text-transparent tracking-wider">
+          Available Tokens
+        </h2>
         
         {tokens.length === 0 ? (
-          <p className="text-gray-400 text-center py-8">
-            No hay tokens disponibles aún. Crea uno en la sección "Crear Token"
+          <p className="text-[#dfdfff] text-center py-8">
+            No tokens available yet. Create one in the "Create Token" section
           </p>
         ) : (
           <div className="space-y-4">
             {tokens.map((token) => (
               <div
                 key={token.address}
-                className={`p-4 rounded-lg border cursor-pointer transition-colors ${
+                className={`p-4 rounded-lg border cursor-pointer transition-all ${
                   selectedToken === token.address
-                    ? 'bg-primary-500/20 border-primary-500'
-                    : 'bg-gray-700 border-gray-600 hover:border-gray-500'
+                    ? 'bg-[#6365ff]/20 border-[#a694ff] shadow-lg shadow-[#6365ff]/30'
+                    : 'bg-gray-800/50 border-gray-700 hover:border-[#6365ff]/50 hover:bg-gray-800'
                 }`}
                 onClick={() => setSelectedToken(token.address)}
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-lg font-semibold text-white">
+                    <h3 className="text-lg font-semibold text-white uppercase">
                       {token.name} ({token.symbol})
                     </h3>
-                    <p className="text-sm text-gray-400 font-mono">
+                    <p className="text-sm text-[#dfdfff] font-mono mt-1">
                       {token.address.slice(0, 10)}...{token.address.slice(-8)}
                     </p>
                   </div>
-                  <button className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg text-sm font-semibold transition-colors">
-                    {selectedToken === token.address ? 'Seleccionado' : 'Seleccionar'}
+                  <button className={`px-4 py-2 rounded-lg text-sm font-bold uppercase tracking-wide transition-all ${
+                    selectedToken === token.address
+                      ? 'bg-gradient-to-r from-[#a694ff] to-[#6365ff] text-white'
+                      : 'bg-gray-700 text-[#dfdfff] hover:bg-gray-600'
+                  }`}>
+                    {selectedToken === token.address ? 'Selected' : 'Select'}
                   </button>
                 </div>
               </div>

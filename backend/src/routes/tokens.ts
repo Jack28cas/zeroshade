@@ -228,5 +228,56 @@ router.post('/tokens/:address/refresh', async (req, res) => {
   }
 })
 
+// Deploy token automatically
+router.post('/tokens/deploy', async (req, res) => {
+  try {
+    const { tokenName, tokenSymbol, initialSupply, ownerAddress } = req.body
+    
+    if (!tokenName || !tokenSymbol || initialSupply === undefined) {
+      return res.status(400).json({ error: 'tokenName, tokenSymbol, and initialSupply are required' })
+    }
+    
+    if (!ownerAddress) {
+      return res.status(400).json({ error: 'ownerAddress is required' })
+    }
+    
+    // Import the deployer service
+    const { deployToken } = await import('../services/tokenDeployer')
+    
+    console.log(`📦 Deploying token via API: ${tokenName} (${tokenSymbol})`)
+    
+    const result = await deployToken(
+      tokenName,
+      tokenSymbol,
+      initialSupply.toString(),
+      ownerAddress
+    )
+    
+    // Save token to database
+    try {
+      const { db } = await import('../db/database')
+      await db.saveToken({
+        address: result.address,
+        name: tokenName,
+        symbol: tokenSymbol,
+        creator: ownerAddress,
+        createdAt: new Date().toISOString(),
+      })
+    } catch (dbError) {
+      console.warn('Could not save token to database:', dbError)
+      // Continue even if DB save fails
+    }
+    
+    res.json({
+      success: true,
+      address: result.address,
+      transactionHash: result.transactionHash,
+    })
+  } catch (error: any) {
+    console.error('Error deploying token:', error)
+    res.status(500).json({ error: error.message || 'Failed to deploy token' })
+  }
+})
+
 export { router as tokenRoutes }
 
